@@ -1,0 +1,53 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.fft
+
+from model.abtb import LayerNorm, ABTB
+from model.cbam import CAB
+
+
+class FAB(nn.Module):  # Feature Attention Block
+    def __init__(self, channels):
+        super(FAB, self).__init__()
+        self.ln = LayerNorm(channels)
+        self.cab = CAB(channels)
+        self.abtb = ABTB(channels)
+        self.conv = nn.Conv2d(channels, channels, kernel_size=3, padding=1)
+        self.relu = nn.ReLU(inplace=True)
+        self.se = SEBlock(channels)
+        self.attn = CAB(channels)
+
+    def forward(self, x):
+        res = self.ln(x)
+        r1 = self.cab(res)
+        r2 = self.abtb(res)
+        res = res+r1+r2
+        res = self.ln(x)
+        res = self.conv(res)
+        res= self.relu(self.conv(res))
+        return res
+
+class SEBlock(nn.Module):
+    def __init__(self, channels, reduction=16):
+        super(SEBlock, self).__init__()
+        self.pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Sequential(
+            nn.Linear(channels, channels // reduction),
+            nn.ReLU(inplace=True),
+            nn.Linear(channels // reduction, channels),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        b, c, _, _ = x.size()
+        y = self.pool(x).view(b, c)
+        y = self.fc(y).view(b, c, 1, 1)
+        return x * y
+
+if __name__ == '__main__':
+    # 示例使用
+    x = torch.randn(4, 64, 256, 256)  # batch_size=4, channels=64, height=32, width=32
+    fab=FAB(64)
+    out = fab(x)
+    print("FAB output shape:", out.shape)
