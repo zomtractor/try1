@@ -14,8 +14,9 @@ from DataPro.data import get_training_data, get_validation_data
 from warmup_scheduler import GradualWarmupScheduler
 from torch.utils.data import DataLoader
 from tensorboardX import SummaryWriter
-from model.backbone import UBlock
-from utils.utils import L1_Charbonnier_loss,img_pad,calculate_metrics,SSIM_loss,VGGLoss
+from models.UFT import LWNet
+from utils.utils import ASLloss,ColorLoss,Blur,L1_Charbonnier_loss,img_pad,SSIM_loss,VGGLoss
+from utils.mask_utils import calculate_metrics
 import lpips
 import warnings
 from lightning.fabric import Fabric
@@ -43,21 +44,21 @@ OPT = opt['TRAINOPTIM']
 
 ## Model
 print('==> Build the model')
-model_restored = UBlock()
+model_restored = LWNet()
 p_number = network_parameters(model_restored)
 # model_restored.cuda()
 
 ## Training model path direction
 mode = opt['MODEL']['MODE']
-model_dir = os.path.join(Train['SAVE_DIR'],'models')
+model_dir = os.path.join(Train['SAVE_DIR'], mode, 'models')
 utils.mkdir(model_dir)
 
-# train_dir = Train['TRAIN_DIR']
+train_dir = Train['TRAIN_DIR']
 val_dir = Train['VAL_DIR']
 utils.mkdir("./val_result")
 
 ## Log
-log_dir = os.path.join(Train['SAVE_DIR'], 'train_logs')
+log_dir = os.path.join(Train['SAVE_DIR'], mode, 'train_logs')
 utils.mkdir(log_dir)
 writer = SummaryWriter(log_dir=log_dir, filename_suffix=f'_{mode}')
 
@@ -97,7 +98,7 @@ Charloss = L1_Charbonnier_loss().cuda()
 Vgg_loss=VGGLoss().cuda()
 ## DataLoaders
 print('==> Loading datasets')
-train_dataset = get_training_data(Train['FLARE_DIR'],Train['GT_DIR'], {'patch_size': Train['TRAIN_PS']})
+train_dataset = get_training_data(train_dir, {'patch_size': Train['TRAIN_PS']})
 train_loader = DataLoader(dataset=train_dataset, batch_size=OPT['BATCH'],
                           shuffle=True, num_workers=OPT['BATCH'], drop_last=True)
 val_dataset = get_validation_data(val_dir, {'patch_size': Train['VAL_PS']})
@@ -126,9 +127,17 @@ best_epoch_psnr = 0
 best_epoch_ssim = 0
 best_lpips=1000
 best_epoch_lpips=0
-
+best_score=0
+best_epoch_score=0
+best_Gpsnr=0
+best_epoch_Gpsnr=0
+best_Spsnr=0
+best_epoch_Spsnr=0
 total_start_time = time.time()
-loss_fn_alex = lpips.LPIPS(net='alex')
+loss_fn_alex = lpips.LPIPS(net='alex').cuda()
+gt_path = "/data/zbl/deflare/FlareDataSet2/test/real/gt"
+input_path ="./val_result"
+mask_path ="/data/zbl/deflare/FlareDataSet2/test/real/mask"
 for epoch in range(start_epoch, OPT['EPOCHS'] + 1):
     epoch_start_time = time.time()
     epoch_loss = 0
@@ -198,22 +207,8 @@ for epoch in range(start_epoch, OPT['EPOCHS'] + 1):
             for batch in range(len(restored)):
                 restored_img = img_as_ubyte(restored[batch])
                 cv2.imwrite(os.path.join('./val_result', data_val[2][batch] + '.png'),cv2.cvtColor(restored_img, cv2.COLOR_RGB2BGR))
-                result = cv2.imread(os.path.join('./val_result', data_val[2][batch] + '.png'))
-                gt = cv2.imread(os.path.join(val_dir+'/gt', data_val[2][batch]) + '.png')
 
-
-                # result = np.array(result, dtype = 'uint8')
-                cur_lpips, cur_psnr, cur_ssim = calculate_metrics(result, gt,loss_fn_alex)
-                cumulative_psnr += cur_psnr
-                cumulative_ssim += cur_ssim
-                cumulative_lpips += cur_lpips
-
-        # psnr_val_rgb = torch.stack(psnr_val_rgb).mean().item()
-        # ssim_val_rgb = torch.stack(ssim_val_rgb).mean().item()
-        psnr_val_rgb = cumulative_psnr / len(val_loader) # actually YCbCr
-        ssim_val_rgb = cumulative_ssim / len(val_loader)
-        lpips_val_rgb = cumulative_lpips / len(val_loader)
-
+        psnr_val_rgb, ssim_val_rgb, lpips_val_rgb,score_val_rgb,Gpsnr_val_rgb,Spsnr_val_rgb = calculate_metrics(gt_path, input_path,mask_path,loss_fn_alex)
 
         # Save the best PSNR model of validation
         if psnr_val_rgb > best_psnr:
@@ -247,6 +242,38 @@ for epoch in range(start_epoch, OPT['EPOCHS'] + 1):
                         }, os.path.join(model_dir, "model_bestLPIPS.pth"))
         print("[epoch %d LPIPS: %.4f --- best_epoch %d Best_LPIPS %.4f]" % (
             epoch, lpips_val_rgb, best_epoch_lpips, best_lpips))
+        #Save the best score model of validation
+        if score_val_rgb > best_score:
+            best_score = score_val_rgb
+            best_epoch_score = epoch
+            torch.save({'epoch': epoch,
+                        'state_dict': model_restored.state_dict(),
+                        'optimizer': optimizer.state_dict()
+                        }, os.path.join(model_dir, "model_bestScore.pth"))
+        print("[epoch %d Score: %.4f --- best_epoch %d Best_Score %.4f]" % (
+            epoch, score_val_rgb, best_epoch_score, best_score))
+
+        # Save the best Gpsnr model of validation
+        if Gpsnr_val_rgb > best_Gpsnr:
+            best_Gpsnr = Gpsnr_val_rgb
+            best_epoch_Gpsnr = epoch
+            torch.save({'epoch': epoch,
+                        'state_dict': model_restored.state_dict(),
+                        'optimizer': optimizer.state_dict()
+                        }, os.path.join(model_dir, "model_bestGpsnr.pth"))
+        print("[epoch %d Gpsnr: %.4f --- best_epoch %d Best_Gpsnr %.4f]" % (
+            epoch, Gpsnr_val_rgb, best_epoch_Gpsnr, best_Gpsnr))
+
+        # Save the best Spsnr model of validation
+        if Spsnr_val_rgb > best_Spsnr:
+            best_Spsnr = Spsnr_val_rgb
+            best_epoch_Spsnr = epoch
+            torch.save({'epoch': epoch,
+                        'state_dict': model_restored.state_dict(),
+                        'optimizer': optimizer.state_dict()
+                        }, os.path.join(model_dir, "model_bestSpsnr.pth"))
+        print("[epoch %d Spsnr: %.4f --- best_epoch %d Best_Spsnr %.4f]" % (
+            epoch, Spsnr_val_rgb, best_epoch_Spsnr, best_Spsnr))
         """ 
         # Save evey epochs of model
         torch.save({'epoch': epoch,
@@ -258,6 +285,9 @@ for epoch in range(start_epoch, OPT['EPOCHS'] + 1):
         writer.add_scalar('val/PSNR', psnr_val_rgb, epoch)
         writer.add_scalar('val/SSIM', ssim_val_rgb, epoch)
         writer.add_scalar('val/LPIPS', lpips_val_rgb, epoch)
+        writer.add_scalar('val/Score', score_val_rgb, epoch)
+        writer.add_scalar('val/Gpsnr', Gpsnr_val_rgb, epoch)
+        writer.add_scalar('val/Spsnr', Spsnr_val_rgb, epoch)
 
     scheduler.step()
 
@@ -275,6 +305,7 @@ for epoch in range(start_epoch, OPT['EPOCHS'] + 1):
     writer.add_scalar('train/loss', epoch_loss, epoch)
     writer.add_scalar('train/ssim_loss', epoch_ssim_loss, epoch)
     writer.add_scalar('train/c1_loss',epoch_c1_loss, epoch)
+    writer.add_scalar('train/vgg_loss', epoch_loss-epoch_ssim_loss-epoch_c1_loss, epoch)
     writer.add_scalar('train/lr', scheduler.get_lr()[0], epoch)
 writer.close()
 

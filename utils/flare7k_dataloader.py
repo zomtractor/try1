@@ -42,7 +42,7 @@ def remove_background(image):
 	return image
 
 class Flare_Image_Loader(data.Dataset):
-	def __init__(self, image_path ,transform_base=None,transform_flare=None,mask_type=None):
+	def __init__(self, image_path ,transform_base=None,transform_flare=None,mask_type=None,options=None):
 		self.ext = ['png','jpeg','jpg','bmp','tif']
 		self.data_list=[]
 		[self.data_list.extend(glob.glob(image_path + '/*.' + e)) for e in self.ext]
@@ -54,6 +54,12 @@ class Flare_Image_Loader(data.Dataset):
 		self.reflective_dict={}
 		self.reflective_list=[]
 		self.reflective_name_list=[]
+
+		self.lightsource_flag=False
+		self.lightsource_dict={}
+		self.lightsource_list=[]
+		self.lightsource_name_list=[]
+
 
 		self.mask_type=mask_type #It is a str which may be None,"luminance" or "color"
 
@@ -87,28 +93,40 @@ class Flare_Image_Loader(data.Dataset):
 		base_img=torch.clamp(base_img,min=0,max=1)
 
 		#load flare image
-		flare_path=random.choice(self.flare_list)
+		# flare_path=random.choice(self.flare_list)
+		flare_idx = random.randint(0,5000)
+		flare_path = self.flare_list[flare_idx]
 		flare_img =Image.open(flare_path)
+
+		lightsource_path = self.lightsource_list[flare_idx]
+		lightsource_img = Image.open(lightsource_path)
+
 		if self.reflective_flag:
 			reflective_path=random.choice(self.reflective_list)
 			reflective_img =Image.open(reflective_path)
 
-
 		flare_img=to_tensor(flare_img)
 		flare_img=adjust_gamma(flare_img)
-		
+
+		lightsource_img=to_tensor(lightsource_img)
+		lightsource_img=adjust_gamma(lightsource_img)
+
 		if self.reflective_flag:
 			reflective_img=to_tensor(reflective_img)
 			reflective_img=adjust_gamma(reflective_img)
 			flare_img = torch.clamp(flare_img+reflective_img,min=0,max=1)
 
 		flare_img=remove_background(flare_img)
+		lightsource_img=remove_background(lightsource_img)
 
 		if self.transform_flare is not None:
-			flare_img=self.transform_flare(flare_img)
-		
+			# flare_img=self.transform_flare(flare_img)
+			# lightsource_img=self.transform_flare(lightsource_img)
+
+			flare_img,lightsource_img=torch.chunk(self.transform_flare(torch.cat((flare_img,lightsource_img),dim=0)),2,dim=0)
 		#change color
 		flare_img=color_jitter(flare_img)
+		lightsource_img=color_jitter(lightsource_img)
 
 		#flare blur
 		blur_transform=transforms.GaussianBlur(21,sigma=(0.1,3.0))
@@ -116,12 +134,17 @@ class Flare_Image_Loader(data.Dataset):
 		flare_img=flare_img+flare_DC_offset
 		flare_img=torch.clamp(flare_img,min=0,max=1)
 
+		lightsource_img=blur_transform(lightsource_img)
+		lightsource_img=lightsource_img+flare_DC_offset
+		lightsource_img=torch.clamp(lightsource_img,min=0,max=1)
+
 		#merge image	
 		merge_img=flare_img+base_img
 		merge_img=torch.clamp(merge_img,min=0,max=1)
-
+		base_img_with_lightsource = base_img+lightsource_img
+		base_img_with_lightsource = torch.clamp(base_img_with_lightsource,min=0,max=1)
 		if self.mask_type==None:
-			return adjust_gamma_reverse(base_img),adjust_gamma_reverse(flare_img),adjust_gamma_reverse(merge_img),gamma
+			return adjust_gamma_reverse(base_img_with_lightsource),adjust_gamma_reverse(flare_img),adjust_gamma_reverse(merge_img),gamma
 		elif self.mask_type=="luminance":
 			#calculate mask (the mask is 3 channel)
 			one = torch.ones_like(base_img)
@@ -141,8 +164,9 @@ class Flare_Image_Loader(data.Dataset):
 		return adjust_gamma_reverse(base_img),adjust_gamma_reverse(flare_img),adjust_gamma_reverse(merge_img),flare_mask,gamma
 
 	def __len__(self):
-		return len(self.data_list)
-	
+		# return len(self.data_list)
+		return len(self.data_list)//100
+
 	def load_scattering_flare(self,flare_name,flare_path):
 		flare_list=[]
 		[flare_list.extend(glob.glob(flare_path + '/*.' + e)) for e in self.ext]
@@ -168,4 +192,18 @@ class Flare_Image_Loader(data.Dataset):
 			print("ERROR: reflective flare images are not loaded properly")
 		else:
 			print("Reflective Flare Image:",reflective_name, " is loaded successfully with examples", str(len_reflective_list))
-		print("Now we have",len(self.reflective_list),'refelctive flare images')
+		print("Now we have",len(self.reflective_list),'reflective flare images')
+
+	def load_lightsource(self,lightsource_name,lightsource_path):
+		self.lightsource_flag=True
+		lightsource_list=[]
+		[lightsource_list.extend(glob.glob(lightsource_path + '/*.' + e)) for e in self.ext]
+		self.lightsource_name_list.append(lightsource_name)
+		self.lightsource_dict[lightsource_name]=lightsource_list
+		self.lightsource_list.extend(lightsource_list)
+		len_lightsource_list=len(self.lightsource_dict[lightsource_name])
+		if len_lightsource_list == 0:
+			print("ERROR: lightsource images are not loaded properly")
+		else:
+			print("lightsource Image:",lightsource_name, " is loaded successfully with examples", str(len_lightsource_list))
+		print("Now we have",len(self.lightsource_list),'lightsource images')

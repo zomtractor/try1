@@ -15,12 +15,13 @@ TRAINING:
   RESUME: False
   TRAIN_PS: 256 # origin: 256
   VAL_PS: 512
-  TRAIN_DIR: '/mnt/zbl/deflare/DataSet/train'       # path to training data
-  VAL_DIR: '/mnt/zbl/deflare/DataSet/test/synthetic'
+  FLARE_DIR: './dataset/Flare7Kpp/Flare7K'       # path to training data
+  GT_DIR: './dataset/Flickr24K'       # path to training data
+  VAL_DIR: './dataset/Flare7Kpp/Flare7K/test_date/real'
   SAVE_DIR: './checkpoints'           # path to save models and images
 TESTING:
   TEST_PS: None
-  TEST_DIR: '/mnt/zbl/deflare/DataSet/test/real' # path to validation data
-  TEST_DIR_SYN: '/mnt/zbl/deflare/DataSet/test/synthetic' # path to validation data
+  TEST_DIR: './dataset/Flare7Kpp/Flare7K/test_data/real' # path to validation data
+  TEST_DIR_SYN: './dataset/Flare7Kpp/Flare7K/test_data/real' # path to validation data
   WEIGHT_ROOT: './checkpoints/models'
   WEIGHT_NAME: '/model_bestLPIPS.pth'

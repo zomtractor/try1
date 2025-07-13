@@ -43,9 +43,9 @@ class UpSample(nn.Module):
         return self.conv(x)
 
 
-class UFormerBlock(nn.Module):
+class UBlock(nn.Module):
     def __init__(self, in_channels=3, base_channels=32):
-        super(UFormerBlock, self).__init__()
+        super(UBlock, self).__init__()
         self.head = nn.Conv2d(in_channels, base_channels, kernel_size=3, padding=1)
 
         self.encoder1 = nn.Sequential(DownSample(base_channels, base_channels * 2), FeatureBlock(base_channels * 2))
