@@ -65,7 +65,8 @@ def calculate_metrics(gt_path,input_path,mask_path,in_loss_fn_alex):
     for i in range(n):
         img_gt = io.imread(gt_list[i])
         img_input = io.imread(input_list[i])
-        ssim += compare_ssim(img_gt, img_input, multichannel=True)
+        # ssim += compare_ssim(img_gt, img_input, multichannel=True)
+        ssim += compare_ssim(img_gt, img_input,channel_axis=2)
         psnr += compare_psnr(img_gt, img_input, data_range=255)
         lpips_val += compare_lpips(img_gt, img_input, loss_fn_alex)
         img_seg=io.imread(mask_list[i])

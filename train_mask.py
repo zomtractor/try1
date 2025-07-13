@@ -45,7 +45,7 @@ OPT = opt['TRAINOPTIM']
 
 ## Model
 print('==> Build the model')
-model_restored = UBlock()
+model_restored = UBlock(base_channels=10)
 p_number = network_parameters(model_restored)
 # model_restored.cuda()
 
@@ -138,9 +138,9 @@ if __name__ == '__main__':
     best_epoch_Spsnr=0
     total_start_time = time.time()
     loss_fn_alex = lpips.LPIPS(net='alex').cuda()
-    gt_path = "/data/zbl/deflare/FlareDataSet2/test/real/gt"
-    input_path ="./val_result"
-    mask_path ="/data/zbl/deflare/FlareDataSet2/test/real/mask"
+    gt_path = "./dataset/Flare7Kpp/test_data/real/gt"
+    input_path ="./dataset/Flare7Kpp/test_data/real/input"
+    mask_path ="./dataset/Flare7Kpp/test_data/real/mask"
     for epoch in range(start_epoch, OPT['EPOCHS'] + 1):
         epoch_start_time = time.time()
         epoch_loss = 0
