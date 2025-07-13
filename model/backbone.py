@@ -5,6 +5,7 @@ import torch.fft
 
 from model.cbam import CBAM
 from model.fab import FAB
+from model.mffe import MFFE
 
 
 class FeatureBlock(nn.Module):

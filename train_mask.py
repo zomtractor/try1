@@ -3,6 +3,8 @@ import torch
 import cv2
 from skimage import img_as_ubyte
 import yaml
+
+from model.backbone import UBlock
 from utils import network_parameters
 import torch.optim as optim
 import time
@@ -14,14 +16,13 @@ from DataPro.data import get_training_data, get_validation_data
 from warmup_scheduler import GradualWarmupScheduler
 from torch.utils.data import DataLoader
 from tensorboardX import SummaryWriter
-from models.UFT import LWNet
 from utils.utils import ASLloss,ColorLoss,Blur,L1_Charbonnier_loss,img_pad,SSIM_loss,VGGLoss
 from utils.mask_utils import calculate_metrics
 import lpips
 import warnings
 from lightning.fabric import Fabric
 warnings.filterwarnings("ignore")
-
+torch.set_float32_matmul_precision('high')
 ## Set Seeds
 my_seed = 1234
 torch.backends.cudnn.benchmark = True
@@ -44,7 +45,7 @@ OPT = opt['TRAINOPTIM']
 
 ## Model
 print('==> Build the model')
-model_restored = LWNet()
+model_restored = UBlock()
 p_number = network_parameters(model_restored)
 # model_restored.cuda()
 
@@ -53,7 +54,7 @@ mode = opt['MODEL']['MODE']
 model_dir = os.path.join(Train['SAVE_DIR'], mode, 'models')
 utils.mkdir(model_dir)
 
-train_dir = Train['TRAIN_DIR']
+# train_dir = Train['TRAIN_DIR']
 val_dir = Train['VAL_DIR']
 utils.mkdir("./val_result")
 
@@ -112,205 +113,207 @@ print(f'''==> Training details:
     Restoration mode:   {mode}
     Train patches size: {str(Train['TRAIN_PS']) + 'x' + str(Train['TRAIN_PS'])}
     Val patches size:   {str(Train['VAL_PS']) + 'x' + str(Train['VAL_PS'])}
-    Model parameters:   {p_number}
+    Model parameters:   \\{p_number}
     Start/End epochs:   {str(start_epoch) + '~' + str(OPT['EPOCHS'] + 1)}
     Batch sizes:        {OPT['BATCH']}
     Learning rate:      {OPT['LR_INITIAL']}''')
 print('------------------------------------------------------------------')
 
+if __name__ == '__main__':
 
-# Start training!
-print('==> Training start: ')
-best_psnr = 0
-best_ssim = 0
-best_epoch_psnr = 0
-best_epoch_ssim = 0
-best_lpips=1000
-best_epoch_lpips=0
-best_score=0
-best_epoch_score=0
-best_Gpsnr=0
-best_epoch_Gpsnr=0
-best_Spsnr=0
-best_epoch_Spsnr=0
-total_start_time = time.time()
-loss_fn_alex = lpips.LPIPS(net='alex').cuda()
-gt_path = "/data/zbl/deflare/FlareDataSet2/test/real/gt"
-input_path ="./val_result"
-mask_path ="/data/zbl/deflare/FlareDataSet2/test/real/mask"
-for epoch in range(start_epoch, OPT['EPOCHS'] + 1):
-    epoch_start_time = time.time()
-    epoch_loss = 0
-    epoch_ssim_loss=0
-    epoch_c1_loss=0
-    train_id = 1
 
-    model_restored.train()
-    for i, data in enumerate(train_loader, 0):
-        # Forward propagation
-        # for param in model_restored.parameters():
-        #     param.grad = None
-        optimizer.zero_grad()
-        target = data[0].cuda()
-        input_ = data[1].cuda()
-        restored = model_restored(input_)
+    # Start training!
+    print('==> Training start: ')
+    best_psnr = 0
+    best_ssim = 0
+    best_epoch_psnr = 0
+    best_epoch_ssim = 0
+    best_lpips=1000
+    best_epoch_lpips=0
+    best_score=0
+    best_epoch_score=0
+    best_Gpsnr=0
+    best_epoch_Gpsnr=0
+    best_Spsnr=0
+    best_epoch_Spsnr=0
+    total_start_time = time.time()
+    loss_fn_alex = lpips.LPIPS(net='alex').cuda()
+    gt_path = "/data/zbl/deflare/FlareDataSet2/test/real/gt"
+    input_path ="./val_result"
+    mask_path ="/data/zbl/deflare/FlareDataSet2/test/real/mask"
+    for epoch in range(start_epoch, OPT['EPOCHS'] + 1):
+        epoch_start_time = time.time()
+        epoch_loss = 0
+        epoch_ssim_loss=0
+        epoch_c1_loss=0
+        train_id = 1
 
-        # Compute loss
-        charl1 = Charloss(restored, target)
-        ssim_loss = (1 - SSIMloss(restored, target))
-        # color_loss = cl(blur_rgb(restored), blur_rgb(target))
-        vgg_loss=Vgg_loss(restored,target)
-        loss = charl1 + ssim_loss+0.01*vgg_loss  # 损失函数
-        # Back propagation
-        # loss.backward()
-        fabric.backward(loss)
-        optimizer.step()
-        epoch_ssim_loss+=ssim_loss.item()
-        epoch_loss += loss.item()
-        epoch_c1_loss+=charl1.item()
-    ## Evaluation (Validation)
-    if epoch % Train['VAL_AFTER_EVERY'] == 0:
-        model_restored.eval()
-        # psnr_val_rgb = []
-        # ssim_val_rgb = []
-        cumulative_psnr = 0
-        cumulative_ssim = 0
-        cumulative_lpips = 0
-        for ii, data_val in enumerate(val_loader, 0):
-            target = data_val[0].cuda()
-            input_ = data_val[1].cuda()
-            b, c, h, w = input_.size()
-            k = 16
-            # pad image such that the resolution is a multiple of 32
-            w_pad = (math.ceil(w / k) * k - w) // 2
-            h_pad = (math.ceil(h / k) * k - h) // 2
-            w_odd_pad = w_pad
-            h_odd_pad = h_pad
-            if w % 2 == 1:
-                w_odd_pad += 1
-            if h % 2 == 1:
-                h_odd_pad += 1
-            input_ = img_pad(input_, w_pad=w_pad, h_pad=h_pad, w_odd_pad=w_odd_pad, h_odd_pad=h_odd_pad)
-            #input_ = imageprocess.addpadding(32,input_)
+        model_restored.train()
+        for i, data in enumerate(train_loader, 0):
+            # Forward propagation
+            # for param in model_restored.parameters():
+            #     param.grad = None
+            optimizer.zero_grad()
+            target = data[0].cuda()
+            input_ = data[1].cuda()
+            restored = model_restored(input_)
 
-            with torch.no_grad():
-                restored = model_restored(input_)
-            # for res, tar in zip(restored, target):
-            #     psnr_val_rgb.append(utils.torchPSNR(res, tar))
-            #     ssim_val_rgb.append(utils.torchSSIM(restored, target))
-                if h_pad != 0:
-                    restored = restored[:, :, h_pad:-h_odd_pad, :]
-                if w_pad != 0:
-                    restored = restored[:, :, :, w_pad:-w_odd_pad]
-            restored = torch.clamp(restored, 0, 1)
-            restored = restored.permute(0, 2, 3, 1).cpu().detach().numpy()
-            for batch in range(len(restored)):
-                restored_img = img_as_ubyte(restored[batch])
-                cv2.imwrite(os.path.join('./val_result', data_val[2][batch] + '.png'),cv2.cvtColor(restored_img, cv2.COLOR_RGB2BGR))
+            # Compute loss
+            charl1 = Charloss(restored, target)
+            ssim_loss = (1 - SSIMloss(restored, target))
+            # color_loss = cl(blur_rgb(restored), blur_rgb(target))
+            vgg_loss=Vgg_loss(restored,target)
+            loss = charl1 + ssim_loss+0.01*vgg_loss  # 损失函数
+            # Back propagation
+            # loss.backward()
+            fabric.backward(loss)
+            optimizer.step()
+            epoch_ssim_loss+=ssim_loss.item()
+            epoch_loss += loss.item()
+            epoch_c1_loss+=charl1.item()
+        ## Evaluation (Validation)
+        if epoch % Train['VAL_AFTER_EVERY'] == 0:
+            model_restored.eval()
+            # psnr_val_rgb = []
+            # ssim_val_rgb = []
+            cumulative_psnr = 0
+            cumulative_ssim = 0
+            cumulative_lpips = 0
+            for ii, data_val in enumerate(val_loader, 0):
+                target = data_val[0].cuda()
+                input_ = data_val[1].cuda()
+                b, c, h, w = input_.size()
+                k = 16
+                # pad image such that the resolution is a multiple of 32
+                w_pad = (math.ceil(w / k) * k - w) // 2
+                h_pad = (math.ceil(h / k) * k - h) // 2
+                w_odd_pad = w_pad
+                h_odd_pad = h_pad
+                if w % 2 == 1:
+                    w_odd_pad += 1
+                if h % 2 == 1:
+                    h_odd_pad += 1
+                input_ = img_pad(input_, w_pad=w_pad, h_pad=h_pad, w_odd_pad=w_odd_pad, h_odd_pad=h_odd_pad)
+                #input_ = imageprocess.addpadding(32,input_)
 
-        psnr_val_rgb, ssim_val_rgb, lpips_val_rgb,score_val_rgb,Gpsnr_val_rgb,Spsnr_val_rgb = calculate_metrics(gt_path, input_path,mask_path,loss_fn_alex)
+                with torch.no_grad():
+                    restored = model_restored(input_)
+                # for res, tar in zip(restored, target):
+                #     psnr_val_rgb.append(utils.torchPSNR(res, tar))
+                #     ssim_val_rgb.append(utils.torchSSIM(restored, target))
+                    if h_pad != 0:
+                        restored = restored[:, :, h_pad:-h_odd_pad, :]
+                    if w_pad != 0:
+                        restored = restored[:, :, :, w_pad:-w_odd_pad]
+                restored = torch.clamp(restored, 0, 1)
+                restored = restored.permute(0, 2, 3, 1).cpu().detach().numpy()
+                for batch in range(len(restored)):
+                    restored_img = img_as_ubyte(restored[batch])
+                    cv2.imwrite(os.path.join('./val_result', data_val[2][batch] + '.png'),cv2.cvtColor(restored_img, cv2.COLOR_RGB2BGR))
 
-        # Save the best PSNR model of validation
-        if psnr_val_rgb > best_psnr:
-            best_psnr = psnr_val_rgb
-            best_epoch_psnr = epoch
+            psnr_val_rgb, ssim_val_rgb, lpips_val_rgb,score_val_rgb,Gpsnr_val_rgb,Spsnr_val_rgb = calculate_metrics(gt_path, input_path,mask_path,loss_fn_alex)
+
+            # Save the best PSNR model of validation
+            if psnr_val_rgb > best_psnr:
+                best_psnr = psnr_val_rgb
+                best_epoch_psnr = epoch
+                torch.save({'epoch': epoch,
+                            'state_dict': model_restored.state_dict(),
+                            'optimizer': optimizer.state_dict()
+                            }, os.path.join(model_dir, "model_bestPSNR.pth"))
+            print("[epoch %d PSNR: %.4f --- best_epoch %d Best_PSNR %.4f]" % (
+                epoch, psnr_val_rgb, best_epoch_psnr, best_psnr))
+
+            # Save the best SSIM model of validation
+            if ssim_val_rgb > best_ssim:
+                best_ssim = ssim_val_rgb
+                best_epoch_ssim = epoch
+                torch.save({'epoch': epoch,
+                            'state_dict': model_restored.state_dict(),
+                            'optimizer': optimizer.state_dict()
+                            }, os.path.join(model_dir, "model_bestSSIM.pth"))
+            print("[epoch %d SSIM: %.4f --- best_epoch %d Best_SSIM %.4f]" % (
+                epoch, ssim_val_rgb, best_epoch_ssim, best_ssim))
+
+            # Save the best LPIPS model of validation
+            if lpips_val_rgb < best_lpips:
+                best_lpips = lpips_val_rgb
+                best_epoch_lpips = epoch
+                torch.save({'epoch': epoch,
+                            'state_dict': model_restored.state_dict(),
+                            'optimizer': optimizer.state_dict()
+                            }, os.path.join(model_dir, "model_bestLPIPS.pth"))
+            print("[epoch %d LPIPS: %.4f --- best_epoch %d Best_LPIPS %.4f]" % (
+                epoch, lpips_val_rgb, best_epoch_lpips, best_lpips))
+            #Save the best score model of validation
+            if score_val_rgb > best_score:
+                best_score = score_val_rgb
+                best_epoch_score = epoch
+                torch.save({'epoch': epoch,
+                            'state_dict': model_restored.state_dict(),
+                            'optimizer': optimizer.state_dict()
+                            }, os.path.join(model_dir, "model_bestScore.pth"))
+            print("[epoch %d Score: %.4f --- best_epoch %d Best_Score %.4f]" % (
+                epoch, score_val_rgb, best_epoch_score, best_score))
+
+            # Save the best Gpsnr model of validation
+            if Gpsnr_val_rgb > best_Gpsnr:
+                best_Gpsnr = Gpsnr_val_rgb
+                best_epoch_Gpsnr = epoch
+                torch.save({'epoch': epoch,
+                            'state_dict': model_restored.state_dict(),
+                            'optimizer': optimizer.state_dict()
+                            }, os.path.join(model_dir, "model_bestGpsnr.pth"))
+            print("[epoch %d Gpsnr: %.4f --- best_epoch %d Best_Gpsnr %.4f]" % (
+                epoch, Gpsnr_val_rgb, best_epoch_Gpsnr, best_Gpsnr))
+
+            # Save the best Spsnr model of validation
+            if Spsnr_val_rgb > best_Spsnr:
+                best_Spsnr = Spsnr_val_rgb
+                best_epoch_Spsnr = epoch
+                torch.save({'epoch': epoch,
+                            'state_dict': model_restored.state_dict(),
+                            'optimizer': optimizer.state_dict()
+                            }, os.path.join(model_dir, "model_bestSpsnr.pth"))
+            print("[epoch %d Spsnr: %.4f --- best_epoch %d Best_Spsnr %.4f]" % (
+                epoch, Spsnr_val_rgb, best_epoch_Spsnr, best_Spsnr))
+            """ 
+            # Save evey epochs of model
             torch.save({'epoch': epoch,
                         'state_dict': model_restored.state_dict(),
                         'optimizer': optimizer.state_dict()
-                        }, os.path.join(model_dir, "model_bestPSNR.pth"))
-        print("[epoch %d PSNR: %.4f --- best_epoch %d Best_PSNR %.4f]" % (
-            epoch, psnr_val_rgb, best_epoch_psnr, best_psnr))
+                        }, os.path.join(model_dir, f"model_epoch_{epoch}.pth"))
+            """
 
-        # Save the best SSIM model of validation
-        if ssim_val_rgb > best_ssim:
-            best_ssim = ssim_val_rgb
-            best_epoch_ssim = epoch
-            torch.save({'epoch': epoch,
-                        'state_dict': model_restored.state_dict(),
-                        'optimizer': optimizer.state_dict()
-                        }, os.path.join(model_dir, "model_bestSSIM.pth"))
-        print("[epoch %d SSIM: %.4f --- best_epoch %d Best_SSIM %.4f]" % (
-            epoch, ssim_val_rgb, best_epoch_ssim, best_ssim))
+            writer.add_scalar('val/PSNR', psnr_val_rgb, epoch)
+            writer.add_scalar('val/SSIM', ssim_val_rgb, epoch)
+            writer.add_scalar('val/LPIPS', lpips_val_rgb, epoch)
+            writer.add_scalar('val/Score', score_val_rgb, epoch)
+            writer.add_scalar('val/Gpsnr', Gpsnr_val_rgb, epoch)
+            writer.add_scalar('val/Spsnr', Spsnr_val_rgb, epoch)
 
-        # Save the best LPIPS model of validation
-        if lpips_val_rgb < best_lpips:
-            best_lpips = lpips_val_rgb
-            best_epoch_lpips = epoch
-            torch.save({'epoch': epoch,
-                        'state_dict': model_restored.state_dict(),
-                        'optimizer': optimizer.state_dict()
-                        }, os.path.join(model_dir, "model_bestLPIPS.pth"))
-        print("[epoch %d LPIPS: %.4f --- best_epoch %d Best_LPIPS %.4f]" % (
-            epoch, lpips_val_rgb, best_epoch_lpips, best_lpips))
-        #Save the best score model of validation
-        if score_val_rgb > best_score:
-            best_score = score_val_rgb
-            best_epoch_score = epoch
-            torch.save({'epoch': epoch,
-                        'state_dict': model_restored.state_dict(),
-                        'optimizer': optimizer.state_dict()
-                        }, os.path.join(model_dir, "model_bestScore.pth"))
-        print("[epoch %d Score: %.4f --- best_epoch %d Best_Score %.4f]" % (
-            epoch, score_val_rgb, best_epoch_score, best_score))
+        scheduler.step()
 
-        # Save the best Gpsnr model of validation
-        if Gpsnr_val_rgb > best_Gpsnr:
-            best_Gpsnr = Gpsnr_val_rgb
-            best_epoch_Gpsnr = epoch
-            torch.save({'epoch': epoch,
-                        'state_dict': model_restored.state_dict(),
-                        'optimizer': optimizer.state_dict()
-                        }, os.path.join(model_dir, "model_bestGpsnr.pth"))
-        print("[epoch %d Gpsnr: %.4f --- best_epoch %d Best_Gpsnr %.4f]" % (
-            epoch, Gpsnr_val_rgb, best_epoch_Gpsnr, best_Gpsnr))
+        print("------------------------------------------------------------------")
+        print("Epoch: {}\tTime: {:.4f}\tLoss: {:.4f}\tSSIMLoss: {:.4f}\tChar1Loss: {:.4f}\tVGGLoss: {:.4f}\tLearningRate {:.8f}".format(epoch, time.time() - epoch_start_time,
+                                                                                  epoch_loss, epoch_ssim_loss,epoch_c1_loss,epoch_loss-epoch_ssim_loss-epoch_c1_loss,scheduler.get_lr()[0]))
+        print("------------------------------------------------------------------")
 
-        # Save the best Spsnr model of validation
-        if Spsnr_val_rgb > best_Spsnr:
-            best_Spsnr = Spsnr_val_rgb
-            best_epoch_Spsnr = epoch
-            torch.save({'epoch': epoch,
-                        'state_dict': model_restored.state_dict(),
-                        'optimizer': optimizer.state_dict()
-                        }, os.path.join(model_dir, "model_bestSpsnr.pth"))
-        print("[epoch %d Spsnr: %.4f --- best_epoch %d Best_Spsnr %.4f]" % (
-            epoch, Spsnr_val_rgb, best_epoch_Spsnr, best_Spsnr))
-        """ 
-        # Save evey epochs of model
+        # Save the last model
         torch.save({'epoch': epoch,
                     'state_dict': model_restored.state_dict(),
                     'optimizer': optimizer.state_dict()
-                    }, os.path.join(model_dir, f"model_epoch_{epoch}.pth"))
-        """
+                    }, os.path.join(model_dir, "model_latest.pth"))
 
-        writer.add_scalar('val/PSNR', psnr_val_rgb, epoch)
-        writer.add_scalar('val/SSIM', ssim_val_rgb, epoch)
-        writer.add_scalar('val/LPIPS', lpips_val_rgb, epoch)
-        writer.add_scalar('val/Score', score_val_rgb, epoch)
-        writer.add_scalar('val/Gpsnr', Gpsnr_val_rgb, epoch)
-        writer.add_scalar('val/Spsnr', Spsnr_val_rgb, epoch)
+        writer.add_scalar('train/loss', epoch_loss, epoch)
+        writer.add_scalar('train/ssim_loss', epoch_ssim_loss, epoch)
+        writer.add_scalar('train/c1_loss',epoch_c1_loss, epoch)
+        writer.add_scalar('train/vgg_loss', epoch_loss-epoch_ssim_loss-epoch_c1_loss, epoch)
+        writer.add_scalar('train/lr', scheduler.get_lr()[0], epoch)
+    writer.close()
 
-    scheduler.step()
-
-    print("------------------------------------------------------------------")
-    print("Epoch: {}\tTime: {:.4f}\tLoss: {:.4f}\tSSIMLoss: {:.4f}\tChar1Loss: {:.4f}\tVGGLoss: {:.4f}\tLearningRate {:.8f}".format(epoch, time.time() - epoch_start_time,
-                                                                              epoch_loss, epoch_ssim_loss,epoch_c1_loss,epoch_loss-epoch_ssim_loss-epoch_c1_loss,scheduler.get_lr()[0]))
-    print("------------------------------------------------------------------")
-
-    # Save the last model
-    torch.save({'epoch': epoch,
-                'state_dict': model_restored.state_dict(),
-                'optimizer': optimizer.state_dict()
-                }, os.path.join(model_dir, "model_latest.pth"))
-
-    writer.add_scalar('train/loss', epoch_loss, epoch)
-    writer.add_scalar('train/ssim_loss', epoch_ssim_loss, epoch)
-    writer.add_scalar('train/c1_loss',epoch_c1_loss, epoch)
-    writer.add_scalar('train/vgg_loss', epoch_loss-epoch_ssim_loss-epoch_c1_loss, epoch)
-    writer.add_scalar('train/lr', scheduler.get_lr()[0], epoch)
-writer.close()
-
-total_finish_time = (time.time() - total_start_time)  # seconds
-print('Total training time: {:.1f} hours'.format((total_finish_time / 60 / 60)))
+    total_finish_time = (time.time() - total_start_time)  # seconds
+    print('Total training time: {:.1f} hours'.format((total_finish_time / 60 / 60)))
 
 
 
