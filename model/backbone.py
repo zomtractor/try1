@@ -49,11 +49,11 @@ class UBlock(nn.Module):
         super(UBlock, self).__init__()
         self.head = nn.Conv2d(in_channels, base_channels, kernel_size=3, padding=1)
 
-        self.encoder1 = nn.Sequential(DownSample(base_channels, base_channels * 2), FeatureBlock(base_channels * 2))
-        self.encoder2 = nn.Sequential(DownSample(base_channels * 2, base_channels * 4), FeatureBlock(base_channels * 4))
-        self.encoder3 = nn.Sequential(DownSample(base_channels * 4, base_channels * 8), FeatureBlock(base_channels * 8))
-        self.encoder4 = nn.Sequential(DownSample(base_channels * 8, base_channels * 16), FeatureBlock(base_channels * 16))
-
+        self.encoder1 = nn.Sequential(FeatureBlock(base_channels),DownSample(base_channels, base_channels * 2))
+        self.encoder2 = nn.Sequential(FeatureBlock(base_channels * 2),DownSample(base_channels * 2, base_channels * 4))
+        self.encoder3 = nn.Sequential(FeatureBlock(base_channels * 4),DownSample(base_channels * 4, base_channels * 8))
+        self.encoder4 = nn.Sequential(FeatureBlock(base_channels * 8),DownSample(base_channels * 8, base_channels * 16))
+        self.bottleneck = FeatureBlock(base_channels * 16)
         self.decoder3 = nn.Sequential(UpSample(base_channels * 16, base_channels * 8), FeatureBlock(base_channels * 8))
         self.decoder2 = nn.Sequential(UpSample(base_channels * 8, base_channels * 4), FeatureBlock(base_channels * 4))
         self.decoder1 = nn.Sequential(UpSample(base_channels * 4, base_channels * 2), FeatureBlock(base_channels * 2))

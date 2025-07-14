@@ -21,7 +21,7 @@ def compare_lpips(img1, img2, loss_fn_alex):
     return output_lpips.detach().numpy()[0,0,0,0]
 
 def calculate_metrics(img_input,img_gt,loss_fn_alex):
-    ssim = compare_ssim(img_gt, img_input, multichannel=True)
+    ssim = compare_ssim(img_gt, img_input, channel_axis=2)
     psnr = compare_psnr(img_gt, img_input, data_range=255)
     lpips_val= compare_lpips(img_gt, img_input, loss_fn_alex)
     return lpips_val,psnr,ssim
