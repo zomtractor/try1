@@ -16,7 +16,6 @@ class FAB(nn.Module):  # Feature Attention Block
         self.conv = nn.Conv2d(channels, channels, kernel_size=3, padding=1)
         self.relu = nn.ReLU(inplace=True)
         self.se = SEBlock(channels)
-        self.attn = CAB(channels)
 
     def forward(self, x):
         res = self.ln(x)
@@ -24,9 +23,8 @@ class FAB(nn.Module):  # Feature Attention Block
         r2 = self.abtb(res)
         res = res+r1+r2
         res = self.ln(x)
-        res = self.conv(res)
         res= self.relu(self.conv(res))
-        return res
+        return self.se(res)
 
 class SEBlock(nn.Module):
     def __init__(self, channels, reduction=16):

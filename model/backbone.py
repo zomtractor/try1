@@ -62,8 +62,8 @@ class UBlock(nn.Module):
         self.tail = nn.Conv2d(base_channels, in_channels, kernel_size=3, padding=1)
 
     def forward(self, x):
-        x = self.head(x)
-        e1 = self.encoder1(x)
+        h = self.head(x)
+        e1 = self.encoder1(h)
         e2 = self.encoder2(e1)
         e3 = self.encoder3(e2)
         e4 = self.encoder4(e3)
@@ -72,5 +72,6 @@ class UBlock(nn.Module):
         d2 = self.decoder2(d3) + e2
         d1 = self.decoder1(d2) + e1
         d0 = self.decoder0(d1)
-
-        return self.tail(d0)
+        
+        t = self.tail(d0)
+        return x+t
