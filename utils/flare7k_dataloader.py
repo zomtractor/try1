@@ -94,7 +94,7 @@ class Flare_Image_Loader(data.Dataset):
 
 		#load flare image
 		# flare_path=random.choice(self.flare_list)
-		flare_idx = random.randint(0,5000)
+		flare_idx = random.randint(0,4999)
 		flare_path = self.flare_list[flare_idx]
 		flare_img =Image.open(flare_path)
 
