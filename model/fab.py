@@ -3,8 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.fft
 
-from model.abtb import LayerNorm, ABTB
-from model.cbam import CAB
+from model import LayerNorm, CAB, ABTB
 
 
 class FAB(nn.Module):  # Feature Attention Block
@@ -26,6 +25,7 @@ class FAB(nn.Module):  # Feature Attention Block
         res= self.relu(self.conv(res))
         return self.se(res)
 
+
 class SEBlock(nn.Module):
     def __init__(self, channels, reduction=16):
         super(SEBlock, self).__init__()
@@ -42,6 +42,7 @@ class SEBlock(nn.Module):
         y = self.pool(x).view(b, c)
         y = self.fc(y).view(b, c, 1, 1)
         return x * y
+
 
 if __name__ == '__main__':
     # 示例使用

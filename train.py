@@ -14,7 +14,7 @@ from DataPro.data import get_training_data, get_validation_data
 from warmup_scheduler import GradualWarmupScheduler
 from torch.utils.data import DataLoader
 from tensorboardX import SummaryWriter
-from model.backbone import UBlock
+from model.backbone_arch import UBlock
 from utils.utils import L1_Charbonnier_loss,img_pad,calculate_metrics,SSIM_loss,VGGLoss
 import lpips
 import warnings

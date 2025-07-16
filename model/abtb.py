@@ -1,12 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from pdb import set_trace as stx
 import numbers
 
 import einops
 from einops import rearrange
-import numpy as np
 
 ###### LLUformer
 
@@ -99,6 +97,8 @@ class FeedForward(nn.Module):
         x = F.gelu(x2)*x1 + F.gelu(x1)*x2
         x = self.project_out(x)
         return x
+
+
 class LayerNorm(nn.Module):
     def __init__(self, dim, LayerNorm_type='BiasFree'):
         super(LayerNorm, self).__init__()
@@ -110,7 +110,6 @@ class LayerNorm(nn.Module):
     def forward(self, x):
         h, w = x.shape[-2:]
         return to_4d(self.body(to_3d(x)), h, w)
-
 
 
 class BiasFree_LayerNorm(nn.Module):
@@ -128,6 +127,7 @@ class BiasFree_LayerNorm(nn.Module):
     def forward(self, x):
         sigma = x.var(-1, keepdim=True, unbiased=False)
         return x / torch.sqrt(sigma+1e-5) * self.weight
+
 
 class WithBias_LayerNorm(nn.Module):
     def __init__(self, normalized_shape):
@@ -147,11 +147,14 @@ class WithBias_LayerNorm(nn.Module):
         sigma = x.var(-1, keepdim=True, unbiased=False)
         return (x - mu) / torch.sqrt(sigma+1e-5) * self.weight + self.bias
 
+
 def to_3d(x):
     return rearrange(x, 'b c h w -> b (h w) c')
 
+
 def to_4d(x,h,w):
     return rearrange(x, 'b (h w) c -> b c h w',h=h,w=w)
+
 
 if __name__ == '__main__':
     # 示例使用

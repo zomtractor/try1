@@ -46,19 +46,29 @@ class MFFE(nn.Module):  # Multi-Frequency Fusion Enhancement
         x = self.conv2(x)
         x = x + identity
 
-        # out = torch.cat((x, fout), 1)
-        # out = self.conv11(out)
-        # if torch.isnan(out).any():
-        #   print('nan detected!')
-        # return out
-        return x
+        out = torch.cat((x, fout), 1)
+        out = self.conv11(out)
+        if torch.isnan(out).any():
+          print('nan detected!')
+        return out
+        # return x
 
 
-
+import cv2 as cv
+from torchvision.transforms import transforms
 if __name__ == '__main__':
+    input = cv.imread('D:/Program_Files/stable_diffusion_launcher/outputs/txt2img-images/2023-10-29/00000-1800816867.png')
+    input = cv.cvtColor(input,cv.COLOR_BGR2RGB)
+    x = transforms.ToTensor()(input).unsqueeze(0)
     # 示例使用
-    x = torch.randn(4, 64, 256, 256)  # batch_size=4, channels=64, height=32, width=32
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    x = x.to(device)  # batch_size=4, channels=64, height=32, width=32
     print(x.shape)
-    mfee = MFFE(64)
-    out = mfee(x)
+    mfee = MFFE(3)
+    mfee=mfee.cuda()
+    for i in range(0,10):
+        out = mfee(x)
     print(out.shape)
+    output = out.cpu().detach().numpy()
+
+
