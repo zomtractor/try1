@@ -11,6 +11,10 @@ scipy
 tb-nightly
 torch>=1.7
 torchvision
+pytorch-msssim
+lightning
+lpips
+tensorboardx
 tqdm
 yapf
 timm
