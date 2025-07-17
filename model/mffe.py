@@ -23,7 +23,7 @@ class MFFE(nn.Module):  # Multi-Frequency Fusion Enhancement
         identity = x
         # identity = x
         # FFT变换
-        fft = torch.fft.fft2(x)
+        fft = torch.fft.fft2(x, norm='ortho')
         fft = torch.fft.fftshift(fft)
         fftreal = torch.cat((fft.real, fft.imag), dim=1)
         # 全局平均池化(GAP)
@@ -31,15 +31,12 @@ class MFFE(nn.Module):  # Multi-Frequency Fusion Enhancement
         gap2 = F.adaptive_avg_pool2d(fftreal,(x.size(2)//4,x.size(3)//4))
         gap3 = F.adaptive_avg_pool2d(fftreal,(x.size(2)//2,x.size(3)//2))
         fout1 = self.relu(self.fconv1(gap1))/2
-        fout1 = torch.nan_to_num(fout1, nan=0.0, posinf=1e4, neginf=-1e4)
         fout2 = self.relu(self.fconv2(F.interpolate(fout1, scale_factor=2, mode='bilinear')+gap2))/2
-        fout2 = torch.nan_to_num(fout2, nan=0.0, posinf=1e4, neginf=-1e4)
         fout3 = self.relu(self.fconv3(F.interpolate(fout2, scale_factor=2, mode='bilinear')+gap3))/2
-        fout3 = torch.nan_to_num(fout3, nan=0.0, posinf=1e4, neginf=-1e4)
         fout = F.interpolate(fout1, scale_factor=8, mode='bilinear')+F.interpolate(fout2,scale_factor=4,mode='bilinear')+F.interpolate(fout3,scale_factor=2,mode='bilinear')
         fout = fout/3
         foutreal, foutimag = torch.chunk(fout, 2, dim=1)
-        fout = torch.fft.ifft2(torch.complex(foutreal, foutimag)).abs()
+        fout = torch.fft.ifft2(torch.fft.ifftshift(torch.complex(foutreal, foutimag)),norm='ortho').real
         # 卷积路径
         x = self.conv1(x)
         x = self.leaky_relu(x)
