@@ -165,9 +165,9 @@ class Flare_Image_Loader(data.Dataset):
 		return adjust_gamma_reverse(base_img),adjust_gamma_reverse(flare_img),adjust_gamma_reverse(merge_img),flare_mask,gamma
 
 	def __len__(self):
-		# return len(self.data_list)
+		return len(self.data_list)
 		# return len(self.data_list)//100
-		return 10
+		# return 10
 	def load_scattering_flare(self,flare_name,flare_path):
 		flare_list=[]
 		[flare_list.extend(glob.glob(flare_path + '/*.' + e)) for e in self.ext]

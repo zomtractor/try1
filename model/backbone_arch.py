@@ -84,7 +84,6 @@ class UBlock(nn.Module):
         self.weight3 = WeightedConnect(base_channels*4,h//4,w//4,requires_grad=weight_connect)
         self.weight4 = WeightedConnect(base_channels*8,h//8,w//8,requires_grad=weight_connect)
 
-
     def forward(self, x):
         out = self.head(x)
         v1 = self.eb1(out)
@@ -114,7 +113,10 @@ class UBlock(nn.Module):
 
 if __name__ == '__main__':
     model = UBlock(in_channels=3, base_channels=32,in_height=256,in_width=256,weight_connect=True)
+    model = model.cuda()
     x = torch.randn(1, 3, 256, 256)  # Batch size of 1, 3 channels, 512x512 image
+    for i in range(100):
+        x = x.cuda()
     output = model(x)
     print(output.shape)  # Should be (1, 3, 512, 512)
 

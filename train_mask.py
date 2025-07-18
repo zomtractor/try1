@@ -32,7 +32,8 @@ torch.manual_seed(my_seed)
 torch.cuda.manual_seed_all(my_seed)
 
 #Define Fabric
-fabric=Fabric(accelerator="cuda",precision="16-mixed")
+# fabric=Fabric(accelerator="cuda",precision="16-mixed")
+fabric=Fabric(accelerator="cuda",devices=2,strategy="ddp_find_unused_parameters_true")
 fabric.launch()
 
 
@@ -171,6 +172,8 @@ if __name__ == '__main__':
             epoch_ssim_loss+=ssim_loss.item()
             epoch_loss += loss.item()
             epoch_c1_loss+=charl1.item()
+            if i%500 == 499:
+                print(f'echo {epoch}, iter {i} finished.===================================================')
         ## Evaluation (Validation)
         if epoch % Train['VAL_AFTER_EVERY'] == 0:
             model_restored.eval()
