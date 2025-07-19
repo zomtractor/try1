@@ -22,7 +22,7 @@ import lpips
 import warnings
 from lightning.fabric import Fabric
 warnings.filterwarnings("ignore")
-torch.set_float32_matmul_precision('high')
+# torch.set_float32_matmul_precision('high')
 ## Set Seeds
 my_seed = 1234
 torch.backends.cudnn.benchmark = True
@@ -100,7 +100,7 @@ Charloss = L1_Charbonnier_loss().cuda()
 Vgg_loss=VGGLoss().cuda()
 ## DataLoaders
 print('==> Loading datasets')
-train_dataset = get_training_data(Train['FLARE_DIR'],Train['GT_DIR'], {'patch_size': Train['TRAIN_PS']})
+train_dataset = get_training_data(Train['TRAIN_DIR'], {'patch_size': Train['TRAIN_PS']})
 train_loader = DataLoader(dataset=train_dataset, batch_size=OPT['BATCH'],
                           shuffle=True, num_workers=OPT['BATCH'], drop_last=True)
 val_dataset = get_validation_data(val_dir, {'patch_size': Train['VAL_PS']})
