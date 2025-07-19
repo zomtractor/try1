@@ -36,4 +36,6 @@ if __name__ == '__main__':
             plt.imsave(f'../dataset/flare7k_local/input/c{c}/{i}.png', input.numpy().transpose(1, 2, 0))
             plt.imsave(f'../dataset/flare7k_local/gt/c{c}/{i}.png', gt.numpy().transpose(1, 2, 0))
 
+            if i%100==0:
+                print(f'Processed {i} images for channel {c}.')
 
