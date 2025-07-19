@@ -14,12 +14,11 @@ class DataLoaderTrain(Dataset):
     def __init__(self, rgb_dir, img_options=None):
         super(DataLoaderTrain, self).__init__()
 
-        inp_files = sorted(os.listdir(os.path.join(rgb_dir, 'input')))
-        tar_files = sorted(os.listdir(os.path.join(rgb_dir, 'gt')))
+        inp_files=os.listdir(os.path.join(rgb_dir, 'input', 'c0'))
+        tar_files=os.listdir(os.path.join(rgb_dir, 'gt', 'c0'))
 
-        self.inp_filenames = [os.path.join(rgb_dir, 'input', x) for x in inp_files if is_image_file(x)]
-        self.tar_filenames = [os.path.join(rgb_dir, 'gt', x) for x in tar_files if is_image_file(x)]
-
+        self.inp_filenames = [os.path.join(rgb_dir, 'input','c0', x) for x in inp_files if is_image_file(x)]
+        self.tar_filenames = [os.path.join(rgb_dir, 'gt','c0', x) for x in tar_files if is_image_file(x)]
         self.img_options = img_options
         self.sizex = len(self.tar_filenames)  # get the size of target
 
@@ -31,8 +30,7 @@ class DataLoaderTrain(Dataset):
     def __getitem__(self, index):
         index_ = index % self.sizex
         ps = self.ps
-
-        inp_path = self.inp_filenames[index_]
+        inp_path = self.inp_filenames[index_].replace('c0', random.choice(['c0', 'c1', 'c2', 'c3']))
         tar_path = self.tar_filenames[index_]
 
         inp_img = Image.open(inp_path).convert('RGB')

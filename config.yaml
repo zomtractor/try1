@@ -15,8 +15,7 @@ TRAINING:
   RESUME: False
   TRAIN_PS: 256 # origin: 256
   VAL_PS: 512
-  FLARE_DIR: './dataset/Flare7Kpp/Flare7K'       # path to training data
-  GT_DIR: './dataset/Flickr24K'       # path to training data
+  TRAIN_DIR: './dataset/flare7_local'       # path to training data
   VAL_DIR: './dataset/Flare7Kpp/test_data/real'
   SAVE_DIR: './checkpoints'           # path to save models and images
 TESTING:
