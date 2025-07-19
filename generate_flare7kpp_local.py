@@ -21,8 +21,8 @@ length = 64
 if __name__ == '__main__':
     loader = Flare_Image_Loader('./dataset/Flickr24K', transform_base, transform_flare,length=length)
     loader.load_scattering_flare('./dataset/Flare7Kpp/Flare7K','./dataset/Flare7Kpp/Flare-R/Compound_Flare')
-    loader.load_light_source('./dataset/Flare7Kpp/Flare7k','./dataset/Flare7Kpp/Flare-R/Light_Source')
-    # loader.load_reflective_flare('./dataset/Flare7Kpp/Flare7K','./dataset/Flare7Kpp/Flare7k/Reflective_Flare')
+    loader.load_light_source('./dataset/Flare7Kpp/Flare7K','./dataset/Flare7Kpp/Flare-R/Light_Source')
+    # loader.load_reflective_flare('./dataset/Flare7Kpp/Flare7K','./dataset/Flare7Kpp/Flare7K/Reflective_Flare')
     channels = [0,1,2,3]
     for c in channels:
         try:

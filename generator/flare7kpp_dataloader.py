@@ -314,15 +314,15 @@ if __name__ == '__main__':
     }
 
     flare_image_loader = Flare_Image_Loader('./dataset/Flickr24K', transform_base, transform_flare)
-    # flare_image_loader.load_scattering_flare('./dataset/Flare7Kpp/Flare7K','./dataset/Flare7Kpp/Flare7k/Scattering_Flare/Compound_Flare')
-    # flare_image_loader.load_light_source('./dataset/Flare7Kpp/Flare7k','./dataset/Flare7Kpp/Flare7k/Scattering_Flare/Light_Source')
+    # flare_image_loader.load_scattering_flare('./dataset/Flare7Kpp/Flare7K','./dataset/Flare7Kpp/Flare7K/Scattering_Flare/Compound_Flare')
+    # flare_image_loader.load_light_source('./dataset/Flare7Kpp/Flare7K','./dataset/Flare7Kpp/Flare7K/Scattering_Flare/Light_Source')
     flare_image_loader.load_scattering_flare('./dataset/Flare7Kpp/Flare7K',
                                              './dataset/Flare7Kpp/Flare-R/Compound_Flare')
-    flare_image_loader.load_light_source('./dataset/Flare7Kpp/Flare7k', './dataset/Flare7Kpp/Flare-R/Light_Source')
+    flare_image_loader.load_light_source('./dataset/Flare7Kpp/Flare7K', './dataset/Flare7Kpp/Flare-R/Light_Source')
     flare_image_loader.load_reflective_flare('./dataset/Flare7Kpp/Flare7K',
-                                             './dataset/Flare7Kpp/Flare7k/Reflective_Flare')
+                                             './dataset/Flare7Kpp/Flare7K/Reflective_Flare')
 
-    # flare_image_loader.load_lightsource('./dataset/Flare7Kpp/Flare7K','./dataset/Flare7Kpp/Flare7k/Scattering_Flare/Core')
+    # flare_image_loader.load_lightsource('./dataset/Flare7Kpp/Flare7K','./dataset/Flare7Kpp/Flare7K/Scattering_Flare/Core')
     # img_index= random.randint(0,len(flare_image_loader)-1)
     img_index = 99
     # test_base_img,test_flare_img,test_merge_img,flare_mask=flare_image_loader[img_index]
