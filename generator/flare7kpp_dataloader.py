@@ -123,9 +123,6 @@ class Flare_Image_Loader(data.Dataset):
         base_img = gain * base_img
         base_img = torch.clamp(base_img, min=0, max=1)
 
-        choice_dataset = random.choices([i for i in range(len(self.flare_list))],k=800)[0]
-        choice_index = random.randint(0, len(self.flare_list[choice_dataset]) - 1)
-
         # load flare and light source image
         if self.light_flag:
             assert len(self.flare_list) == len(
@@ -316,16 +313,16 @@ if __name__ == '__main__':
         "shear": 20
     }
 
-    flare_image_loader = Flare_Image_Loader('E:/dataset/Flickr24K', transform_base, transform_flare)
-    # flare_image_loader.load_scattering_flare('E:/dataset/Flare7Kpp/Flare7K','E:/dataset/Flare7Kpp/Flare7k/Scattering_Flare/Compound_Flare')
-    # flare_image_loader.load_light_source('E:/dataset/Flare7Kpp/Flare7k','E:/dataset/Flare7Kpp/Flare7k/Scattering_Flare/Light_Source')
-    flare_image_loader.load_scattering_flare('E:/dataset/Flare7Kpp/Flare7K',
-                                             'E:/dataset/Flare7Kpp/Flare-R/Compound_Flare')
-    flare_image_loader.load_light_source('E:/dataset/Flare7Kpp/Flare7k', 'E:/dataset/Flare7Kpp/Flare-R/Light_Source')
-    flare_image_loader.load_reflective_flare('E:/dataset/Flare7Kpp/Flare7K',
-                                             'E:/dataset/Flare7Kpp/Flare7k/Reflective_Flare')
+    flare_image_loader = Flare_Image_Loader('./dataset/Flickr24K', transform_base, transform_flare)
+    # flare_image_loader.load_scattering_flare('./dataset/Flare7Kpp/Flare7K','./dataset/Flare7Kpp/Flare7k/Scattering_Flare/Compound_Flare')
+    # flare_image_loader.load_light_source('./dataset/Flare7Kpp/Flare7k','./dataset/Flare7Kpp/Flare7k/Scattering_Flare/Light_Source')
+    flare_image_loader.load_scattering_flare('./dataset/Flare7Kpp/Flare7K',
+                                             './dataset/Flare7Kpp/Flare-R/Compound_Flare')
+    flare_image_loader.load_light_source('./dataset/Flare7Kpp/Flare7k', './dataset/Flare7Kpp/Flare-R/Light_Source')
+    flare_image_loader.load_reflective_flare('./dataset/Flare7Kpp/Flare7K',
+                                             './dataset/Flare7Kpp/Flare7k/Reflective_Flare')
 
-    # flare_image_loader.load_lightsource('E:/dataset/Flare7Kpp/Flare7K','E:/dataset/Flare7Kpp/Flare7k/Scattering_Flare/Core')
+    # flare_image_loader.load_lightsource('./dataset/Flare7Kpp/Flare7K','./dataset/Flare7Kpp/Flare7k/Scattering_Flare/Core')
     # img_index= random.randint(0,len(flare_image_loader)-1)
     img_index = 99
     # test_base_img,test_flare_img,test_merge_img,flare_mask=flare_image_loader[img_index]
