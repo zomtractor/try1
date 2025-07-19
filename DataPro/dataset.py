@@ -30,8 +30,9 @@ class DataLoaderTrain(Dataset):
     def __getitem__(self, index):
         index_ = index % self.sizex
         ps = self.ps
-        inp_path = self.inp_filenames[index_].replace('c0', random.choice(['c0', 'c1', 'c2', 'c3']))
-        tar_path = self.tar_filenames[index_]
+        strs = random.choice(['c0', 'c1', 'c2', 'c3'])
+        inp_path = self.inp_filenames[index_].replace('c0', strs )
+        tar_path = self.tar_filenames[index_].replace('c0', strs )
 
         inp_img = Image.open(inp_path).convert('RGB')
         tar_img = Image.open(tar_path).convert('RGB')
