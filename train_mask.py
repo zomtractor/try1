@@ -33,7 +33,9 @@ torch.cuda.manual_seed_all(my_seed)
 
 #Define Fabric
 # fabric=Fabric(accelerator="cuda",precision="16-mixed")
-fabric=Fabric(accelerator="cuda",devices=2,strategy="ddp_find_unused_parameters_true")
+# fabric=Fabric(accelerator="cuda",devices=1,strategy="ddp_find_unused_parameters_true")
+fabric=Fabric(accelerator="cuda",strategy="ddp_find_unused_parameters_true")
+# fabric=Fabric(accelerator="cuda",devices=2,strategy="ddp_find_unused_parameters_true")
 fabric.launch()
 
 
@@ -140,7 +142,7 @@ if __name__ == '__main__':
     total_start_time = time.time()
     loss_fn_alex = lpips.LPIPS(net='alex').cuda()
     gt_path = "./dataset/Flare7Kpp/test_data/real/gt"
-    input_path ="./dataset/Flare7Kpp/test_data/real/input"
+    input_path ="./val_result"
     mask_path ="./dataset/Flare7Kpp/test_data/real/mask"
     for epoch in range(start_epoch, OPT['EPOCHS'] + 1):
         epoch_start_time = time.time()
@@ -212,7 +214,7 @@ if __name__ == '__main__':
                 restored = restored.permute(0, 2, 3, 1).cpu().detach().numpy()
                 for batch in range(len(restored)):
                     restored_img = img_as_ubyte(restored[batch])
-                    cv2.imwrite(os.path.join('./val_result', data_val[2][batch] + '.png'),cv2.cvtColor(restored_img, cv2.COLOR_RGB2BGR))
+                    cv2.imwrite(os.path.join(input_path, data_val[2][batch] + '.png'),cv2.cvtColor(restored_img, cv2.COLOR_RGB2BGR))
 
             psnr_val_rgb, ssim_val_rgb, lpips_val_rgb,score_val_rgb,Gpsnr_val_rgb,Spsnr_val_rgb = calculate_metrics(gt_path, input_path,mask_path,loss_fn_alex)
 
