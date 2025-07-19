@@ -1,6 +1,8 @@
-from generator.flare7kpp_dataloader import Flare_Image_Loader
+
 from matplotlib import pyplot as plt
 import os
+
+from generator import Flare_Image_Loader
 
 transform_base= {
 	'img_size': 512
