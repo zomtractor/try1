@@ -34,7 +34,7 @@ torch.cuda.manual_seed_all(my_seed)
 #Define Fabric
 # fabric=Fabric(accelerator="cuda",precision="16-mixed")
 # fabric=Fabric(accelerator="cuda",devices=1,strategy="ddp_find_unused_parameters_true")
-fabric=Fabric(accelerator="cuda",strategy="ddp_find_unused_parameters_true")
+fabric=Fabric(accelerator="cuda")
 # fabric=Fabric(accelerator="cuda",devices=2,strategy="ddp_find_unused_parameters_true")
 fabric.launch()
 
@@ -141,9 +141,13 @@ if __name__ == '__main__':
     best_epoch_Spsnr=0
     total_start_time = time.time()
     loss_fn_alex = lpips.LPIPS(net='alex').cuda()
-    gt_path = "./dataset/Flare7Kpp/test_data/real/gt"
-    input_path ="./val_result"
-    mask_path ="./dataset/Flare7Kpp/test_data/real/mask"
+    # gt_path = "./dataset/Flare7Kpp/test_data/real/gt"
+    # gt_path = "./dataset/Flare7Kpp/test_data/real/gt"
+    gt_path = os.path.join(val_dir,'gt')
+    # input_path ="./val_result"
+    input_path = './val_result'
+    # mask_path ="./dataset/Flare7Kpp/test_data/real/mask"
+    mask_path = os.path.join(val_dir,'mask')
     for epoch in range(start_epoch, OPT['EPOCHS'] + 1):
         epoch_start_time = time.time()
         epoch_loss = 0
@@ -175,7 +179,7 @@ if __name__ == '__main__':
             epoch_loss += loss.item()
             epoch_c1_loss+=charl1.item()
             if i%500 == 499:
-                print(f'echo {epoch}, iter {i} finished.===================================================')
+                print(f'echo {epoch}, iter {i+1} finished.===================================================')
         ## Evaluation (Validation)
         if epoch % Train['VAL_AFTER_EVERY'] == 0:
             model_restored.eval()
