@@ -21,10 +21,9 @@ class LocalDataLoaderTrain(Dataset):
         self.tar_filenames = [os.path.join(rgb_dir, 'gt','c0', x) for x in tar_files if is_image_file(x)]
         self.img_options = img_options
         # self.sizex = len(self.tar_filenames)  # get the size of target
-        self.length = length
+        self.length = len(self.inp_filenames) if length is None else length
 
-        self.random_indices = list(range(len(self.inp_filenames)))
-        random.shuffle(self.random_indices)
+        self.random_indices = random.choices(list(range(len(self.inp_filenames))), k=self.length)
         self.ps = self.img_options['patch_size']
 
     def __len__(self):
@@ -32,12 +31,11 @@ class LocalDataLoaderTrain(Dataset):
         return self.length
 
     def __getitem__(self, index):
-        index_ = index % self.sizex
         ps = self.ps
         strs = random.choice(['c0', 'c1', 'c2', 'c3'])
         # inp_path = self.inp_filenames[index_].replace('c0', strs )
         # tar_path = self.tar_filenames[index_].replace('c0', strs )
-        idx = self.random_indices[index_]
+        idx = self.random_indices[index]
         inp_path = self.inp_filenames[idx].replace('c0', strs)
         tar_path = self.tar_filenames[idx].replace('c0', strs)
         inp_img = Image.open(inp_path).convert('RGB')
@@ -94,7 +92,7 @@ class LocalDataLoaderTrain(Dataset):
 
 
 class DataLoaderTrain(Dataset):
-    def __init__(self, rgb_dir, img_options=None):
+    def __init__(self, rgb_dir, img_options=None,length=None):
         super(DataLoaderTrain, self).__init__()
 
         inp_files = sorted(os.listdir(os.path.join(rgb_dir, 'input')))
@@ -104,7 +102,10 @@ class DataLoaderTrain(Dataset):
         self.tar_filenames = [os.path.join(rgb_dir, 'gt', x) for x in tar_files if is_image_file(x)]
 
         self.img_options = img_options
-        self.sizex = len(self.tar_filenames)  # get the size of target
+        # self.sizex = len(self.tar_filenames)  # get the size of target
+        self.sizex = len(self.inp_filenames) if length is None else length
+
+        self.random_indices = random.choices(list(range(len(self.inp_filenames))), k=self.sizex)
 
         self.ps = self.img_options['patch_size']
 
@@ -112,7 +113,7 @@ class DataLoaderTrain(Dataset):
         return self.sizex
 
     def __getitem__(self, index):
-        index_ = index % self.sizex
+        index_ = self.random_indices[index]
         ps = self.ps
 
         inp_path = self.inp_filenames[index_]

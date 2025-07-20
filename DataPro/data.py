@@ -1,12 +1,12 @@
 import os
 
-from DataPro import LocalDataLoaderTrain, DataLoaderVal, DataLoaderTest
+from DataPro import LocalDataLoaderTrain, DataLoaderVal, DataLoaderTest, DataLoaderTrain
 
 
 def get_training_data(rgb_dir, img_options):
     assert os.path.exists(rgb_dir)
-    return LocalDataLoaderTrain(rgb_dir, img_options)
-    # return DataLoaderTrain(rgb_dir, img_options)
+    # return LocalDataLoaderTrain(rgb_dir, img_options)
+    return DataLoaderTrain(rgb_dir, img_options,length=10000)
 
 
 def get_validation_data(rgb_dir, img_options):
