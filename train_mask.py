@@ -28,6 +28,7 @@ my_seed = 1234
 torch.backends.cudnn.benchmark = True
 random.seed(my_seed)
 np.random.seed(my_seed)
+torch.set_float32_matmul_precision('highest')
 torch.manual_seed(my_seed)
 torch.cuda.manual_seed_all(my_seed)
 
@@ -78,21 +79,25 @@ scheduler_cosine = optim.lr_scheduler.CosineAnnealingLR(optimizer, OPT['EPOCHS']
 # scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.1)
 scheduler = GradualWarmupScheduler(optimizer, multiplier=1, total_epoch=warmup_epochs, after_scheduler=scheduler_cosine)
 scheduler.step()
-
+checkpoint=None
 ## Resume (Continue training by a pretrained model)
 if Train['RESUME']:
     path_chk_rest = utils.get_last_path(model_dir, '_latest.pth')
-    utils.load_checkpoint(model_restored, path_chk_rest)
-    start_epoch = utils.load_start_epoch(path_chk_rest) + 1
-    utils.load_optim(optimizer, path_chk_rest)
+    checkpoint = utils.load_checkpoint(model_restored, path_chk_rest)
+    if(checkpoint is not None):
+        # start_epoch = utils.load_start_epoch(path_chk_rest) + 1
+        start_epoch = checkpoint['epoch'] + 1
+        # utils.load_optim(optimizer, path_chk_rest)
+        optimizer.load_state_dict(checkpoint['optimizer'])
 
-    for i in range(1, start_epoch):
-        scheduler.step()
-    new_lr = scheduler.get_lr()[0]
-    print('------------------------------------------------------------------')
-    print("==> Resuming Training with learning rate:", new_lr)
-    print('------------------------------------------------------------------')
-
+        for i in range(1, start_epoch):
+            scheduler.step()
+        new_lr = scheduler.get_lr()[0]
+        print('------------------------------------------------------------------')
+        print("==> Resuming Training with learning rate:", new_lr)
+        print('------------------------------------------------------------------')
+    else:
+        print('No checkpoint found, starting from scratch.')
 ## Loss
 # Als = ASLloss().cuda()
 # cl = ColorLoss().cuda()
@@ -139,6 +144,22 @@ if __name__ == '__main__':
     best_epoch_Gpsnr=0
     best_Spsnr=0
     best_epoch_Spsnr=0
+    if checkpoint is not None and 'best_psnr' in checkpoint:
+        best_psnr = checkpoint['best_psnr']
+        best_ssim = checkpoint['best_ssim']
+        best_epoch_psnr = checkpoint['best_epoch_psnr']
+        best_epoch_ssim = checkpoint['best_epoch_ssim']
+        best_lpips=checkpoint['best_lpips']
+        best_epoch_lpips=checkpoint['best_epoch_lpips']
+        best_score=checkpoint['best_score']
+        best_epoch_score=checkpoint['best_epoch_score']
+        best_Gpsnr=checkpoint['best_Gpsnr']
+        best_epoch_Gpsnr=checkpoint['best_epoch_Gpsnr']
+        best_Spsnr=checkpoint['best_Spsnr']
+        best_epoch_Spsnr=checkpoint['best_epoch_Spsnr']
+        print("load indices from checkpoint succeed.")
+    else:
+        print('No checkpoint found, starting from scratch.')
     total_start_time = time.time()
     loss_fn_alex = lpips.LPIPS(net='alex').cuda()
     # gt_path = "./dataset/Flare7Kpp/test_data/real/gt"
@@ -311,7 +332,20 @@ if __name__ == '__main__':
         # Save the last model
         torch.save({'epoch': epoch,
                     'state_dict': model_restored.state_dict(),
-                    'optimizer': optimizer.state_dict()
+                    'optimizer': optimizer.state_dict(),
+                    "best_psnr": best_psnr,
+                    "best_ssim": best_ssim,
+                    "best_epoch_psnr": best_epoch_psnr,
+                    "best_epoch_ssim": best_epoch_ssim,
+                    "best_lpips": best_lpips,
+                    "best_epoch_lpips": best_epoch_lpips,
+                    "best_score": best_score,
+                    "best_epoch_score": best_epoch_score,
+                    "best_Gpsnr": best_Gpsnr,
+                    "best_epoch_Gpsnr": best_epoch_Gpsnr,
+                    "best_Spsnr": best_Spsnr,
+                    "best_epoch_Spsnr": best_epoch_Spsnr
+
                     }, os.path.join(model_dir, "model_latest.pth"))
 
         writer.add_scalar('train/loss', epoch_loss, epoch)

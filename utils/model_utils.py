@@ -25,7 +25,7 @@ def save_checkpoint(model_dir, state, session):
 
 
 def load_checkpoint(model, weights):
-    checkpoint = torch.load(weights)
+    checkpoint = torch.load(weights,weights_only=False)
     try:
         model.load_state_dict(checkpoint["state_dict"])
     except:
@@ -35,6 +35,7 @@ def load_checkpoint(model, weights):
             name = k[7:]  # remove `module.`
             new_state_dict[name] = v
         model.load_state_dict(new_state_dict)
+    return checkpoint
 
 
 def load_checkpoint_multigpu(model, weights):

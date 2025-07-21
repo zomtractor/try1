@@ -21,14 +21,14 @@ class LocalDataLoaderTrain(Dataset):
         self.tar_filenames = [os.path.join(rgb_dir, 'gt','c0', x) for x in tar_files if is_image_file(x)]
         self.img_options = img_options
         # self.sizex = len(self.tar_filenames)  # get the size of target
-        self.length = len(self.inp_filenames) if length is None else length
+        self.sizex = len(self.inp_filenames) if length is None else length
 
-        self.random_indices = random.choices(list(range(len(self.inp_filenames))), k=self.length)
+        self.random_indices = random.sample(range(len(self.inp_filenames)), k=self.sizex)
         self.ps = self.img_options['patch_size']
 
     def __len__(self):
         # return self.sizex
-        return self.length
+        return self.sizex
 
     def __getitem__(self, index):
         ps = self.ps
@@ -105,7 +105,7 @@ class DataLoaderTrain(Dataset):
         # self.sizex = len(self.tar_filenames)  # get the size of target
         self.sizex = len(self.inp_filenames) if length is None else length
 
-        self.random_indices = random.choices(list(range(len(self.inp_filenames))), k=self.sizex)
+        self.random_indices = random.sample(range(len(self.inp_filenames)), k=self.sizex)
 
         self.ps = self.img_options['patch_size']
 
