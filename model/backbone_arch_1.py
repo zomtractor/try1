@@ -25,9 +25,11 @@ class FeatureBlock(nn.Module):
 class DownSample(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(DownSample, self).__init__()
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=2, padding=1)
+        self.down = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1)
 
     def forward(self, x):
+        x = self.down(x)
         return self.conv(x)
 
 
@@ -95,7 +97,7 @@ class UBlock(nn.Module):
         out = v1+self.up1(out)
         out = self.db1(out)
         out = self.tail(out)
-        return out
+        return x+out
 
 
 if __name__ == '__main__':
