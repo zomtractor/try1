@@ -25,7 +25,6 @@ class MFFE(nn.Module):  # Multi-Frequency Fusion Enhancement
     def forward(self, x):
         identity = x
         fft = torch.fft.rfft2(x, norm='ortho')
-        fft = torch.fft.fftshift(fft)
         amp = torch.abs(fft)
         phase = torch.angle(fft)
         amp = self.fconv1(amp)
@@ -33,7 +32,7 @@ class MFFE(nn.Module):  # Multi-Frequency Fusion Enhancement
         amp = self.fconv2(amp)
         phase = self.fattn(phase)
         fout = torch.complex(amp*torch.cos(phase), amp*torch.sin(phase))
-        fout = torch.fft.irfft2(torch.fft.fftshift(fout),norm='ortho')
+        fout = torch.fft.irfft2(fout,norm='ortho')
         # 卷积路径
         x = self.sconv1(x)
         x = self.sactivate(x)
