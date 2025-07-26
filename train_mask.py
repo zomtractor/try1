@@ -2,6 +2,7 @@ import os
 import torch
 import cv2
 from skimage import img_as_ubyte
+from focal_frequency_loss import FocalFrequencyLoss as FFL
 import yaml
 
 from model.backbone_arch import UBlock
@@ -105,6 +106,7 @@ if Train['RESUME']:
 SSIMloss=SSIM_loss().cuda()
 Charloss = L1_Charbonnier_loss().cuda()
 Vgg_loss=VGGLoss().cuda()
+Freq_loss = FFL(loss_weight=1.0,alpha=1.0).cuda()
 ## DataLoaders
 print('==> Loading datasets')
 train_dataset = get_training_data(Train['TRAIN_DIR'], {'patch_size': Train['TRAIN_PS']})
@@ -174,6 +176,8 @@ if __name__ == '__main__':
         epoch_loss = 0
         epoch_ssim_loss=0
         epoch_c1_loss=0
+        epoch_vgg_loss=0
+        epoch_freq_loss=0
         train_id = 1
 
         model_restored.train()
@@ -191,7 +195,8 @@ if __name__ == '__main__':
             ssim_loss = (1 - SSIMloss(restored, target))
             # color_loss = cl(blur_rgb(restored), blur_rgb(target))
             vgg_loss=Vgg_loss(restored,target)
-            loss = charl1 + ssim_loss+0.01*vgg_loss  # 损失函数
+            freq_loss = Freq_loss(restored,target)
+            loss = charl1 + ssim_loss + 1.5*freq_loss + 0.5*vgg_loss  # 损失函数
             # Back propagation
             # loss.backward()
             fabric.backward(loss)
@@ -199,6 +204,8 @@ if __name__ == '__main__':
             epoch_ssim_loss+=ssim_loss.item()
             epoch_loss += loss.item()
             epoch_c1_loss+=charl1.item()
+            epoch_vgg_loss +=vgg_loss.item()
+            epoch_freq_loss+=freq_loss.item()
             if i%500 == 499:
                 print(f'echo {epoch}, iter {i+1} finished.===================================================')
         ## Evaluation (Validation)
@@ -325,8 +332,8 @@ if __name__ == '__main__':
         scheduler.step()
 
         print("------------------------------------------------------------------")
-        print("Epoch: {}\tTime: {:.4f}\tLoss: {:.4f}\tSSIMLoss: {:.4f}\tChar1Loss: {:.4f}\tVGGLoss: {:.4f}\tLearningRate {:.8f}".format(epoch, time.time() - epoch_start_time,
-                                                                                  epoch_loss, epoch_ssim_loss,epoch_c1_loss,epoch_loss-epoch_ssim_loss-epoch_c1_loss,scheduler.get_lr()[0]))
+        print("Epoch: {}\tTime: {:.4f}\tLoss: {:.4f}\tSSIMLoss: {:.4f}\tChar1Loss: {:.4f}\tVGGLoss: {:.4f}\tFreqLoss: {:.4f}\tLearningRate {:.8f}".format(epoch, time.time() - epoch_start_time,
+                                                                                  epoch_loss, epoch_ssim_loss,epoch_c1_loss,epoch_vgg_loss,epoch_freq_loss,scheduler.get_lr()[0]))
         print("------------------------------------------------------------------")
 
         # Save the last model
@@ -351,7 +358,8 @@ if __name__ == '__main__':
         writer.add_scalar('train/loss', epoch_loss, epoch)
         writer.add_scalar('train/ssim_loss', epoch_ssim_loss, epoch)
         writer.add_scalar('train/c1_loss',epoch_c1_loss, epoch)
-        writer.add_scalar('train/vgg_loss', epoch_loss-epoch_ssim_loss-epoch_c1_loss, epoch)
+        writer.add_scalar('train/vgg_loss', epoch_vgg_loss, epoch)
+        writer.add_scalar('train/freq_loss', epoch_freq_loss, epoch)
         writer.add_scalar('train/lr', scheduler.get_lr()[0], epoch)
     writer.close()
 
