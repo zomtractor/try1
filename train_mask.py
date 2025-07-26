@@ -5,7 +5,7 @@ from skimage import img_as_ubyte
 from focal_frequency_loss import FocalFrequencyLoss as FFL
 import yaml
 
-from model.backbone_arch import UBlock
+from model import UBlock
 from utils import network_parameters
 import torch.optim as optim
 import time
@@ -13,7 +13,7 @@ import utils
 import numpy as np
 import random
 import math
-from DataPro.data import get_training_data, get_validation_data
+from DataPro import get_training_data, get_validation_data
 from warmup_scheduler import GradualWarmupScheduler
 from torch.utils.data import DataLoader
 from tensorboardX import SummaryWriter
@@ -29,7 +29,7 @@ my_seed = 1234
 torch.backends.cudnn.benchmark = True
 random.seed(my_seed)
 np.random.seed(my_seed)
-torch.set_float32_matmul_precision('highest')
+torch.set_float32_matmul_precision('high')
 torch.manual_seed(my_seed)
 torch.cuda.manual_seed_all(my_seed)
 

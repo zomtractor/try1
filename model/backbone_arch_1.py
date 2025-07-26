@@ -75,7 +75,6 @@ class UBlock(nn.Module):
 
         self.tail = nn.Conv2d(base_channels, in_channels, kernel_size=3, padding=1)
 
-        c,h,w=in_channels,in_height,in_width
 
     def forward(self, x):
         out = self.head(x)
