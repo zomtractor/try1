@@ -16,7 +16,7 @@ transform_flare= {
     "shear": 20
 }
 
-length = 64
+length = 8192
 
 import os
 from concurrent.futures import ThreadPoolExecutor
