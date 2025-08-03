@@ -1,3 +1,4 @@
+import argparse
 import os
 import torch
 import cv2
@@ -21,8 +22,7 @@ from utils.utils import ASLloss, ColorLoss, Blur, L1_Charbonnier_loss, img_pad, 
 from utils.mask_utils import calculate_metrics
 import lpips
 import warnings
-from lightning.fabric import Fabric
-
+import torch.distributed as dist
 
 def init_torch_config():
     warnings.filterwarnings("ignore")
@@ -36,12 +36,9 @@ def init_torch_config():
     torch.cuda.manual_seed_all(my_seed)
     torch.set_float32_matmul_precision('high')
     # fabric = Fabric(accelerator="cuda", devices=2, strategy="ddp_find_unused_parameters_true")
-    fabric = Fabric(accelerator="cuda")
-    fabric.launch()
-    return fabric
+    dist.init_process_group(backend='nccl',init_method='tcp://127.0.0.1:23456')
 
-
-def get_data_loaders(config, fabric):
+def get_data_loaders(config):
     Train = config['TRAINING']
     OPT = config['TRAINOPTIM']
     ## DataLoaders
@@ -50,17 +47,17 @@ def get_data_loaders(config, fabric):
     utils.mkdir(Train['VAL']['SYN_SAVE'])
 
     train_dataset = get_training_data(Train['TRAIN_DIR'], {'patch_size': Train['TRAIN_PS']})
+    train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
     train_loader = DataLoader(dataset=train_dataset, batch_size=OPT['BATCH'],
-                              shuffle=True, num_workers=OPT['BATCH'], drop_last=True)
+                              shuffle=True, num_workers=OPT['BATCH'], drop_last=True,sampler=train_sampler)
     real_val_dataset = get_validation_data(Train['VAL']['REAL_DIR'], {'patch_size': Train['VAL_PS']})
+    real_val_sampler = torch.utils.data.distributed.DistributedSampler(real_val_dataset)
     real_val_loader = DataLoader(dataset=real_val_dataset, batch_size=1, shuffle=False, num_workers=2,
-                                 drop_last=True)
+                                 drop_last=True, sampler=real_val_sampler)
     syn_val_dataset = get_validation_data(Train['VAL']['SYN_DIR'], {'patch_size': Train['VAL_PS']})
+    syn_val_sampler = torch.utils.data.distributed.DistributedSampler(syn_val_dataset)
     syn_val_loader = DataLoader(dataset=syn_val_dataset, batch_size=1, shuffle=False, num_workers=2,
-                                drop_last=True)
-    train_loader = fabric.setup_dataloaders(train_loader)
-    real_val_loader = fabric.setup_dataloaders(real_val_loader)
-    syn_val_loader = fabric.setup_dataloaders(syn_val_loader)
+                                drop_last=True, sampler=syn_val_sampler)
     return train_loader, real_val_loader, syn_val_loader
 
 
@@ -73,7 +70,7 @@ def get_loss_functions():
     return SSIMloss, Charloss, Vgg_loss, Freq_loss
 
 
-def load_model(config, fabric):
+def load_model(config):
     Train = config['TRAINING']
     OPT = config['TRAINOPTIM']
 
@@ -83,12 +80,12 @@ def load_model(config, fabric):
     model_dir = os.path.join(Train['SAVE_DIR'], mode, 'models')
     utils.mkdir(model_dir)
     model_restored = UBlock(base_channels=10)
+    model_restored = torch.nn.parallel.DistributedDataParallel(model_restored, device_ids=[args.local_rank])
     p_number = network_parameters(model_restored)
     ## Optimizer
     start_epoch = 1
     new_lr = float(OPT['LR_INITIAL'])
     optimizer = optim.Adam(model_restored.parameters(), lr=new_lr, betas=(0.9, 0.999), eps=1e-8)
-    model_restored, optimizer = fabric.setup(model_restored, optimizer)
     ## Scheduler (Strategy)
     warmup_epochs = 3
     scheduler_cosine = optim.lr_scheduler.CosineAnnealingLR(optimizer, OPT['EPOCHS'] - warmup_epochs,
@@ -292,8 +289,13 @@ def validate(config, name, model_restored, val_loader, record_dict, loss_fn):
 
 
 if __name__ == '__main__':
-
-    fabric = init_torch_config()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--local_rank', default=-1, type=int,
+                        help='node rank for distributed training')
+    args = parser.parse_args()
+    print(args.local_rank)
+    torch.cuda.set_device(args.local_rank)
+    init_torch_config()
 
     # Start training!
     print('==> Training start: ')
@@ -327,7 +329,7 @@ if __name__ == '__main__':
     }
 
     config, writer = load_config()
-    model_restored, checkpoint, optimizer, scheduler, start_epoch = load_model(config, fabric)
+    model_restored, checkpoint, optimizer, scheduler, start_epoch = load_model(config)
 
     if checkpoint is not None:
         best_real_dict = checkpoint['best_real_dict']
@@ -336,7 +338,7 @@ if __name__ == '__main__':
     else:
         print('No checkpoint found, starting from scratch.')
 
-    train_loader, real_val_loader, syn_val_loader = get_data_loaders(config, fabric)
+    train_loader, real_val_loader, syn_val_loader = get_data_loaders(config)
     total_start_time = time.time()
     # gt_path = "./dataset/Flare7Kpp/test_data/real/gt"
     # gt_path = "./dataset/Flare7Kpp/test_data/real/gt"
@@ -373,8 +375,7 @@ if __name__ == '__main__':
             freq_loss = Freq_loss(restored, target)
             loss = charl1 + ssim_loss + 1.5 * freq_loss + 0.5 * vgg_loss  # 损失函数
             # Back propagation
-            # loss.backward()
-            fabric.backward(loss)
+            loss.backward()
             optimizer.step()
             epoch_ssim_loss += ssim_loss.item()
             epoch_loss += loss.item()

@@ -106,7 +106,7 @@ if Train['RESUME']:
 SSIMloss=SSIM_loss().cuda()
 Charloss = L1_Charbonnier_loss().cuda()
 Vgg_loss=VGGLoss().cuda()
-Freq_loss = FFL(loss_weight=1.0,alpha=1.0).cuda()
+Freq_loss = FFL(loss_weight=0.1,alpha=1.0).cuda()
 ## DataLoaders
 print('==> Loading datasets')
 train_dataset = get_training_data(Train['TRAIN_DIR'], {'patch_size': Train['TRAIN_PS']})
