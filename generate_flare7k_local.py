@@ -53,12 +53,12 @@ if __name__ == '__main__':
     # 初始化loader
     loader = Flare_Image_Loader('./dataset/Flickr24K', transform_base,
                                 transform_flare, length=length)
-    loader.load_scattering_flare('./dataset/flare7k/Flare7K',
-                                 './dataset/flare7k/Flare7K/Scattering_Flare/Compound_Flare')
-    loader.load_light_source('./dataset/flare7k/Flare7K',
-                             './dataset/flare7k/Flare7K/Scattering_Flare/Light_Source')
-    loader.load_reflective_flare('./dataset/flare7k/Flare7K',
-                                 './dataset/flare7k/Flare7K/Reflective_Flare')
+    loader.load_scattering_flare('./dataset/Flare7Kpp/Flare7K',
+                                 './dataset/Flare7Kpp/Flare7K/Scattering_Flare/Compound_Flare')
+    loader.load_light_source('./dataset/Flare7Kpp/Flare7K',
+                             './dataset/Flare7Kpp/Flare7K/Scattering_Flare/Light_Source')
+    loader.load_reflective_flare('./dataset/Flare7Kpp/Flare7K',
+                                 './dataset/Flare7Kpp/Flare7K/Reflective_Flare')
 
     channels = [0, 1, 2, 3]
     batch_size = 32  # 根据内存情况调整批次大小
