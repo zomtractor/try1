@@ -50,12 +50,11 @@ def get_data_loaders(config):
     train_loader = DataLoader(dataset=train_dataset, batch_size=OPT['BATCH'],
                             sampler=train_sampler)
     real_val_dataset = get_validation_data(Train['VAL']['REAL_DIR'], {'patch_size': Train['VAL_PS']})
-    real_val_sampler = torch.utils.data.distributed.DistributedSampler(real_val_dataset)
-    real_val_loader = DataLoader(dataset=real_val_dataset, batch_size=1,
-                                 sampler=real_val_sampler)
+    # real_val_sampler = torch.utils.data.distributed.DistributedSampler(real_val_dataset)
+    real_val_loader = DataLoader(dataset=real_val_dataset, batch_size=1, shuffle=False)
     syn_val_dataset = get_validation_data(Train['VAL']['SYN_DIR'], {'patch_size': Train['VAL_PS']})
-    syn_val_sampler = torch.utils.data.distributed.DistributedSampler(syn_val_dataset)
-    syn_val_loader = DataLoader(dataset=syn_val_dataset, batch_size=1, shuffle=False,sampler=syn_val_sampler)
+    # syn_val_sampler = torch.utils.data.distributed.DistributedSampler(syn_val_dataset)
+    syn_val_loader = DataLoader(dataset=syn_val_dataset, batch_size=1, shuffle=False)
     return train_loader, real_val_loader, syn_val_loader
 
 
