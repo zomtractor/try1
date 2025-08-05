@@ -6,7 +6,7 @@ MODEL:
 TRAINOPTIM:
   BATCH: 4 # origin: 2
   EPOCHS: 300
-  CHANNLES: 20
+  CHANNELS: 20
   DEVICES: 4
   # NEPOCH_DECAY: [10]
   LR_INITIAL: 1e-4 #origin: 2e-4
