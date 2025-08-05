@@ -78,6 +78,7 @@ class Flare_Image_Loader(data.Dataset):
         self.light_name_list = []
         self.length = length
 
+        self.transform_r = transforms.CenterCrop((1008, 756))
 
         self.mask_type = mask_type  # It is a str which may be None,"luminance" or "color"
         self.img_size = transform_base['img_size']
@@ -90,7 +91,7 @@ class Flare_Image_Loader(data.Dataset):
 
         self.transform_flare = transforms.Compose([transforms.RandomAffine(degrees=(0, 360), scale=(
         transform_flare['scale_min'], transform_flare['scale_max']), translate=(
-        transform_flare['translate'] / 1440, transform_flare['translate'] / 1440), shear=(
+        transform_flare['translate'] / 1008, transform_flare['translate'] / 756), shear=(
         -transform_flare['shear'], transform_flare['shear'])),
                                                    transforms.CenterCrop((self.img_size, self.img_size)),
                                                    transforms.RandomHorizontalFlip(),
@@ -131,11 +132,13 @@ class Flare_Image_Loader(data.Dataset):
             flare_path = self.flare_list[self.random_choices_flare[index % len(self.flare_list)]]
             light_path = self.light_list[self.random_choices_flare[index % len(self.flare_list)]]
             light_img = Image.open(light_path).convert('RGB')
+            light_img = self.transform_r(light_img)
             light_img = to_tensor(light_img)
             light_img = adjust_gamma(light_img)
         else:
             flare_path = self.flare_list[self.random_choices_flare[index % len(self.flare_list)]]
         flare_img = Image.open(flare_path).convert('RGB')
+        flare_img = self.transform_r(flare_img)
         if self.reflective_flag:
             reflective_path_list = self.reflective_list[self.random_choices_reflective_flare[index % len(self.reflective_list)]]
             if len(reflective_path_list) != 0:
@@ -148,8 +151,10 @@ class Flare_Image_Loader(data.Dataset):
         flare_img = adjust_gamma(flare_img)
 
         if self.reflective_flag and reflective_img is not None:
+            reflective_img = self.transform_r(reflective_img)
             reflective_img = to_tensor(reflective_img)
             reflective_img = adjust_gamma(reflective_img)
+            # pad black to size 1440*1440
             flare_img = torch.clamp(flare_img + reflective_img, min=0, max=1)
 
         flare_img = remove_background(flare_img)

@@ -26,19 +26,22 @@ import matplotlib.pyplot as plt
 
 
 def save_image_batch(args):
-    """保存一批图像的辅助函数，用于多线程处理"""
-    c, indices,loader = args
-    for i in indices:
-        dic = loader[i]  # 按需加载数据
-        gt, input = dic['gt'], dic['lq']
+    try:
+        """保存一批图像的辅助函数，用于多线程处理"""
+        c, indices,loader = args
+        for i in indices:
+            dic = loader[i]  # 按需加载数据
+            gt, input = dic['gt'], dic['lq']
 
-        plt.imsave(f'./dataset/flare7kpp_mixed_local/input/c{c}/{i}.png',
-                   input.numpy().transpose(1, 2, 0))
-        plt.imsave(f'./dataset/flare7kpp_mixed_local/gt/c{c}/{i}.png',
-                   gt.numpy().transpose(1, 2, 0))
+            plt.imsave(f'./dataset/flare7kpp_mixed_local/input/c{c}/{i}.png',
+                       input.numpy().transpose(1, 2, 0))
+            plt.imsave(f'./dataset/flare7kpp_mixed_local/gt/c{c}/{i}.png',
+                       gt.numpy().transpose(1, 2, 0))
 
-        if i % 100 == 0:
-            print(f'Processed {i} images for channel {c}.')
+            if i % 100 == 0:
+                print(f'Processed {i} images for channel {c}.')
+    except Exception as e:
+        print(e)
 
 
 def batch_indices(total, batch_size):
