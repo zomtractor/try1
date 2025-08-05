@@ -82,7 +82,7 @@ def load_model(config, fabric):
     mode = config['MODEL']['MODE']
     model_dir = os.path.join(Train['SAVE_DIR'], mode, 'models')
     utils.mkdir(model_dir)
-    model_restored = UBlock(base_channels=OPT['CHANNELS'])
+    model_restored = UBlock(base_channels=OPT['CHANNLES'])
     p_number = network_parameters(model_restored)
     ## Optimizer
     start_epoch = 1
