@@ -24,7 +24,7 @@ import warnings
 from lightning.fabric import Fabric
 
 
-def init_torch_config():
+def init_torch_config(config):
     warnings.filterwarnings("ignore")
     # torch.set_float32_matmul_precision('high')
     ## Set Seeds
@@ -36,7 +36,7 @@ def init_torch_config():
     torch.cuda.manual_seed_all(my_seed)
     torch.set_float32_matmul_precision('high')
     # fabric = Fabric(accelerator="cuda", devices=2, strategy="ddp_find_unused_parameters_true")
-    fabric = Fabric(accelerator="cuda")
+    fabric = Fabric(accelerator="cuda",devices=config['TRAINOPTIM']['DEVICES'])
     fabric.launch()
     return fabric
 
@@ -293,7 +293,6 @@ def validate(config, name, model_restored, val_loader, record_dict, loss_fn):
 
 if __name__ == '__main__':
 
-    fabric = init_torch_config()
 
     # Start training!
     print('==> Training start: ')
@@ -327,6 +326,7 @@ if __name__ == '__main__':
     }
 
     config, writer = load_config()
+    fabric = init_torch_config(config)
     model_restored, checkpoint, optimizer, scheduler, start_epoch = load_model(config, fabric)
 
     if checkpoint is not None:
