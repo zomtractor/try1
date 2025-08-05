@@ -384,33 +384,36 @@ if __name__ == '__main__':
             if i % 500 == 499:
                 print(f'echo {epoch}, iter {i + 1} finished.===================================================')
         ## Evaluation (Validation)
-        if epoch % Train['VAL_AFTER_EVERY'] == 0:
-            validate(config,'REAL',model_restored,  real_val_loader, best_real_dict,loss_fn_alex)
-            validate(config,'SYN',model_restored,  syn_val_loader, best_syn_dict,loss_fn_alex)
+
+        if fabric.is_global_zero:
+
+            if epoch % Train['VAL_AFTER_EVERY'] == 0:
+                validate(config,'REAL',model_restored,  real_val_loader, best_real_dict,loss_fn_alex)
+                validate(config,'SYN',model_restored,  syn_val_loader, best_syn_dict,loss_fn_alex)
+            print("------------------------------------------------------------------")
+            print(
+                "Epoch: {}\tTime: {:.4f}\tLoss: {:.4f}\tSSIMLoss: {:.4f}\tChar1Loss: {:.4f}\tVGGLoss: {:.4f}\tFreqLoss: {:.4f}\tLearningRate {:.8f}".format(
+                    epoch, time.time() - epoch_start_time,
+                    epoch_loss, epoch_ssim_loss, epoch_c1_loss, epoch_vgg_loss, epoch_freq_loss, scheduler.get_lr()[0]))
+            print("------------------------------------------------------------------")
+
+            # Save the last model
+            torch.save({'epoch': epoch,
+                        'state_dict': model_restored.state_dict(),
+                        'optimizer': optimizer.state_dict(),
+
+                        'best_real_dict': best_real_dict,
+                        'best_syn_dict': best_syn_dict,
+                        }, os.path.join(model_dir, "model_latest.pth"))
+
+            writer.add_scalar('train/loss', epoch_loss, epoch)
+            writer.add_scalar('train/ssim_loss', epoch_ssim_loss, epoch)
+            writer.add_scalar('train/c1_loss', epoch_c1_loss, epoch)
+            writer.add_scalar('train/vgg_loss', epoch_vgg_loss, epoch)
+            writer.add_scalar('train/freq_loss', epoch_freq_loss, epoch)
+            writer.add_scalar('train/lr', scheduler.get_lr()[0], epoch)
+
         scheduler.step()
-
-        print("------------------------------------------------------------------")
-        print(
-            "Epoch: {}\tTime: {:.4f}\tLoss: {:.4f}\tSSIMLoss: {:.4f}\tChar1Loss: {:.4f}\tVGGLoss: {:.4f}\tFreqLoss: {:.4f}\tLearningRate {:.8f}".format(
-                epoch, time.time() - epoch_start_time,
-                epoch_loss, epoch_ssim_loss, epoch_c1_loss, epoch_vgg_loss, epoch_freq_loss, scheduler.get_lr()[0]))
-        print("------------------------------------------------------------------")
-
-        # Save the last model
-        torch.save({'epoch': epoch,
-                    'state_dict': model_restored.state_dict(),
-                    'optimizer': optimizer.state_dict(),
-
-                    'best_real_dict': best_real_dict,
-                    'best_syn_dict': best_syn_dict,
-                    }, os.path.join(model_dir, "model_latest.pth"))
-
-        writer.add_scalar('train/loss', epoch_loss, epoch)
-        writer.add_scalar('train/ssim_loss', epoch_ssim_loss, epoch)
-        writer.add_scalar('train/c1_loss', epoch_c1_loss, epoch)
-        writer.add_scalar('train/vgg_loss', epoch_vgg_loss, epoch)
-        writer.add_scalar('train/freq_loss', epoch_freq_loss, epoch)
-        writer.add_scalar('train/lr', scheduler.get_lr()[0], epoch)
     writer.close()
 
     total_finish_time = (time.time() - total_start_time)  # seconds
