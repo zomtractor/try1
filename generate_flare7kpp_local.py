@@ -57,12 +57,9 @@ if __name__ == '__main__':
                                  './dataset/Flare7Kpp/Flare-R/Compound_Flare')
     loader.load_light_source('./dataset/Flare7Kpp/Flare7K',
                              './dataset/Flare7Kpp/Flare-R/Light_Source')
-    loader.load_reflective_flare('./dataset/Flare7Kpp/Flare7K',
-                                 './dataset/Flare7Kpp/Flare7K/Reflective_Flare')
 
     channels = [0, 1, 2, 3]
     batch_size = 32  # 根据内存情况调整批次大小
-
     # 创建必要的目录
     for c in channels:
         os.makedirs(f'./dataset/flare7kpp_r_local/input/c{c}', exist_ok=True)
