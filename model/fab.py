@@ -9,7 +9,8 @@ from model import LayerNorm, CAB, ABTB
 class FAB(nn.Module):  # Feature Attention Block
     def __init__(self, channels):
         super(FAB, self).__init__()
-        self.ln = LayerNorm(channels)
+        self.ln1 = LayerNorm(channels)
+        self.ln2 = LayerNorm(channels)
         self.cab = CAB(channels)
         self.abtb = ABTB(channels)
         self.conv = nn.Conv2d(channels, channels, kernel_size=3, padding=1)
@@ -17,11 +18,11 @@ class FAB(nn.Module):  # Feature Attention Block
         self.se = SEBlock(channels)
 
     def forward(self, x):
-        res = self.ln(x)
+        res = self.ln1(x)
         r1 = self.cab(res)
         r2 = self.abtb(res)
         res = res+r1+r2
-        res = self.ln(res)
+        res = self.ln2(res)
         res= self.relu(self.conv(res))
         return self.se(res)
 
