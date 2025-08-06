@@ -59,8 +59,8 @@ def get_data_loaders(config, fabric):
     syn_val_loader = DataLoader(dataset=syn_val_dataset, batch_size=1, shuffle=False, num_workers=2,
                                 drop_last=True)
     train_loader = fabric.setup_dataloaders(train_loader)
-    real_val_loader = fabric.setup_dataloaders(real_val_loader)
-    syn_val_loader = fabric.setup_dataloaders(syn_val_loader)
+    # real_val_loader = fabric.setup_dataloaders(real_val_loader)
+    # syn_val_loader = fabric.setup_dataloaders(syn_val_loader)
     return train_loader, real_val_loader, syn_val_loader
 
 
