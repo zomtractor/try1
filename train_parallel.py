@@ -7,7 +7,7 @@ from focal_frequency_loss import FocalFrequencyLoss as FFL
 import yaml
 import torch.distributed as dist
 
-from model import UBlock
+from model import UBlock, CombinedLoss
 from utils import network_parameters
 import torch.optim as optim
 import time
@@ -56,15 +56,6 @@ def get_data_loaders(config):
     # syn_val_sampler = torch.utils.data.distributed.DistributedSampler(syn_val_dataset)
     syn_val_loader = DataLoader(dataset=syn_val_dataset, batch_size=1, shuffle=False)
     return train_loader, real_val_loader, syn_val_loader
-
-
-def get_loss_functions():
-    ## DataLoaders
-    SSIMloss = SSIM_loss().cuda()
-    Charloss = L1_Charbonnier_loss().cuda()
-    Vgg_loss = VGGLoss().cuda()
-    Freq_loss = FFL(loss_weight=0.1, alpha=1.0).cuda()
-    return SSIMloss, Charloss, Vgg_loss, Freq_loss
 
 
 def load_model(config):
@@ -207,7 +198,7 @@ def validate(config, name, model_restored, val_loader, record_dict, loss_fn):
                 future.result()
     psnr_val_rgb, ssim_val_rgb, lpips_val_rgb, score_val_rgb, Gpsnr_val_rgb, Spsnr_val_rgb = calculate_metrics(
         gt_path, input_path, mask_path, loss_fn)
-
+    assert psnr_val_rgb > 20, "nan or inf in PSNR calculation"
     # Save the best PSNR model of validation
     if psnr_val_rgb > record_dict['best_psnr']:
         record_dict['best_psnr'] = psnr_val_rgb
@@ -347,7 +338,7 @@ if __name__ == '__main__':
     Train = config['TRAINING']
     OPT = config['TRAINOPTIM']
     model_dir = os.path.join(Train['SAVE_DIR'], config['MODEL']['MODE'], 'models')
-    SSIMloss, Charloss, Vgg_loss, Freq_loss = get_loss_functions()
+    combined_loss = CombinedLoss(weights=Train['LOSS_WEIGHTS']).cuda()
     loss_fn_alex = lpips.LPIPS(net='alex').cuda()
     for epoch in range(start_epoch, OPT['EPOCHS'] + 1):
         epoch_start_time = time.time()
@@ -368,21 +359,16 @@ if __name__ == '__main__':
             input_ = data[1].cuda()
             restored = model_restored(input_)
 
-            # Compute loss
-            charl1 = Charloss(restored, target)
-            ssim_loss = (1 - SSIMloss(restored, target))
-            # color_loss = cl(blur_rgb(restored), blur_rgb(target))
-            vgg_loss = Vgg_loss(restored, target)
-            freq_loss = Freq_loss(restored, target)
-            loss = charl1 + ssim_loss + 1.5 * freq_loss + 0.5 * vgg_loss  # 损失函数
-            # Back propagation
+
+            loss, items = combined_loss(restored, target)
+
             loss.backward()
             optimizer.step()
-            epoch_ssim_loss += ssim_loss.item()
             epoch_loss += loss.item()
-            epoch_c1_loss += charl1.item()
-            epoch_vgg_loss += vgg_loss.item()
-            epoch_freq_loss += freq_loss.item()
+            epoch_ssim_loss += items['ssim']
+            epoch_c1_loss += items['charbonnier']
+            epoch_vgg_loss += items['vgg']
+            epoch_freq_loss += items['freq']
             if i % 500 == 499:
                 print(f'echo {epoch}, iter {i + 1} finished.===================================================')
         ## Evaluation (Validation)
@@ -408,6 +394,14 @@ if __name__ == '__main__':
                         'best_real_dict': best_real_dict,
                         'best_syn_dict': best_syn_dict,
                         }, os.path.join(model_dir, "model_latest.pth"))
+
+            if epoch % Train['SAVE_AFTER_EVERY'] == 0:
+                torch.save({'epoch': epoch,
+                            'state_dict': model_restored.state_dict(),
+                            'optimizer': optimizer.state_dict(),
+                            'best_real_dict': best_real_dict,
+                            'best_syn_dict': best_syn_dict,
+                            }, os.path.join(model_dir, f"model_ep{epoch}.pth"))
 
             writer.add_scalar('train/loss', epoch_loss, epoch)
             writer.add_scalar('train/ssim_loss', epoch_ssim_loss, epoch)

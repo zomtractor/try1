@@ -5,7 +5,7 @@ from skimage import img_as_ubyte
 from focal_frequency_loss import FocalFrequencyLoss as FFL
 import yaml
 
-from model import UBlock
+from model import UBlock, CombinedLoss
 from utils import network_parameters
 import torch.optim as optim
 import time
@@ -62,16 +62,6 @@ def get_data_loaders(config, fabric):
     # real_val_loader = fabric.setup_dataloaders(real_val_loader)
     # syn_val_loader = fabric.setup_dataloaders(syn_val_loader)
     return train_loader, real_val_loader, syn_val_loader
-
-
-def get_loss_functions():
-    ## DataLoaders
-    SSIMloss = SSIM_loss().cuda()
-    Charloss = L1_Charbonnier_loss().cuda()
-    Vgg_loss = VGGLoss().cuda()
-    Freq_loss = FFL(loss_weight=0.1, alpha=1.0).cuda()
-    return SSIMloss, Charloss, Vgg_loss, Freq_loss
-
 
 def load_model(config, fabric):
     Train = config['TRAINING']
@@ -156,7 +146,6 @@ def precompute_padding(h, w, k=16):
     return h_pad_top, h_pad_bottom, w_pad_left, w_pad_right
 def validate(config, name, model_restored, val_loader, record_dict, loss_fn):
     Train = config['TRAINING']
-    OPT = config['TRAINOPTIM']
     val_dir = Train['VAL'][f'{name}_DIR']
     gt_path = os.path.join(val_dir, 'gt')
     input_path = Train['VAL'][f'{name}_SAVE']
@@ -210,7 +199,7 @@ def validate(config, name, model_restored, val_loader, record_dict, loss_fn):
                 future.result()
     psnr_val_rgb, ssim_val_rgb, lpips_val_rgb, score_val_rgb, Gpsnr_val_rgb, Spsnr_val_rgb = calculate_metrics(
         gt_path, input_path, mask_path, loss_fn)
-
+    assert psnr_val_rgb > 20, "nan or inf in PSNR calculation"
     # Save the best PSNR model of validation
     if psnr_val_rgb > record_dict['best_psnr']:
         record_dict['best_psnr'] = psnr_val_rgb
@@ -344,7 +333,7 @@ if __name__ == '__main__':
     Train = config['TRAINING']
     OPT = config['TRAINOPTIM']
     model_dir = os.path.join(Train['SAVE_DIR'], config['MODEL']['MODE'], 'models')
-    SSIMloss, Charloss, Vgg_loss, Freq_loss = get_loss_functions()
+    combined_loss = CombinedLoss(weights=Train['LOSS_WEIGHTS']).cuda()
     loss_fn_alex = lpips.LPIPS(net='alex').cuda()
     for epoch in range(start_epoch, OPT['EPOCHS'] + 1):
         epoch_start_time = time.time()
@@ -365,22 +354,16 @@ if __name__ == '__main__':
             input_ = data[1].cuda()
             restored = model_restored(input_)
 
-            # Compute loss
-            charl1 = Charloss(restored, target)
-            ssim_loss = (1 - SSIMloss(restored, target))
-            # color_loss = cl(blur_rgb(restored), blur_rgb(target))
-            vgg_loss = Vgg_loss(restored, target)
-            freq_loss = Freq_loss(restored, target)
-            loss = charl1 + ssim_loss + 1.5 * freq_loss + 0.5 * vgg_loss  # 损失函数
+            loss, items = combined_loss(restored, target)
             # Back propagation
             # loss.backward()
             fabric.backward(loss)
             optimizer.step()
-            epoch_ssim_loss += ssim_loss.item()
             epoch_loss += loss.item()
-            epoch_c1_loss += charl1.item()
-            epoch_vgg_loss += vgg_loss.item()
-            epoch_freq_loss += freq_loss.item()
+            epoch_ssim_loss += items['ssim']
+            epoch_c1_loss += items['charbonnier']
+            epoch_vgg_loss += items['vgg']
+            epoch_freq_loss += items['freq']
             if i % 500 == 499:
                 print(f'echo {epoch}, iter {i + 1} finished.===================================================')
         ## Evaluation (Validation)
@@ -396,7 +379,6 @@ if __name__ == '__main__':
                     epoch, time.time() - epoch_start_time,
                     epoch_loss, epoch_ssim_loss, epoch_c1_loss, epoch_vgg_loss, epoch_freq_loss, scheduler.get_lr()[0]))
             print("------------------------------------------------------------------")
-
             # Save the last model
             torch.save({'epoch': epoch,
                         'state_dict': model_restored.state_dict(),
