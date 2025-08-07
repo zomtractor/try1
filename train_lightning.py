@@ -35,6 +35,7 @@ def init_torch_config(config):
     torch.manual_seed(my_seed)
     torch.cuda.manual_seed_all(my_seed)
     torch.set_float32_matmul_precision('high')
+    torch.set_anomaly_enabled(True)
     # fabric = Fabric(accelerator="cuda", devices=2, strategy="ddp_find_unused_parameters_true")
     fabric = Fabric(accelerator="cuda",devices=config['TRAINOPTIM']['DEVICES'])
     fabric.launch()

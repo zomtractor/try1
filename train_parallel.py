@@ -36,6 +36,7 @@ def init_torch_config():
     torch.manual_seed(my_seed)
     torch.cuda.manual_seed_all(my_seed)
     torch.set_float32_matmul_precision('high')
+    torch.set_anomaly_enabled(True)  # Enable anomaly detection for debugging
 
 def get_data_loaders(config):
     Train = config['TRAINING']
